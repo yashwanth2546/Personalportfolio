@@ -12,6 +12,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { FACES } from './data/faces';
 import { PHOTOS } from './data/photos';
+
+const MAIL = ''; // ← your email address, e.g. 'hello@yourdomain.com'. Every "Let's talk", "Say hello" and collab button uses it.
 /* =========================================================
    Page: stage tracking, IST clock, headline weight hover, button fill
    ========================================================= */
@@ -159,46 +161,45 @@ document.querySelectorAll('.btn').forEach(b => {
 
 /* =========================================================
    MARTY · built in code
-   Marty's body is assets/marty/marty.glb (the original voxel Marty: pixel skin and joggers, black hoodie,
-   voxel hair, chunky white sneakers). martyFromGLB() rigs it for walking, sitting and smoking:
-   it adds knees, keeps the arm groups for IK and puts the glowing ember on the cigarette.
-   If the file can't load, buildMartyBlocks() builds a look-alike in code so the page never breaks.
-
-   Fallback, built in code: the blocky (voxel) Marty: pixel-textured skin and joggers, black hoodie, voxel hair,
-   chunky white sneakers, cigarette in his right hand. The rig and joint positions are the
-   ones every movement on the page is written for, so only the look lives here.
+   Marty is built here in blocks: bare chest with an X scar, red sash, white cloud collar, straw hat on his back,
+   wild white voxel hair, a wide grin, baggy white pants, wooden sandals, a bone of meat in his right fist
+   (it steams where the cigarette used to smoke). A fan-made nod to Gear 5 Luffy; no official art or assets.
+   Drop your own model at assets/marty/marty.glb and martyFromGLB() rigs it instead (node names in README). The old voxel one is marty-old.glb.
+   The rig and joint positions are the ones every movement on the page is written for, so only the look lives here.
    Rig:  Buddy ─ Hips ─ Leg_L/R ─ Shin_L/R ─ Sneaker
               └ Torso ─ Neck ─ Head ─ Hair
                       ├ Arm_R ─ UpperArm_R, Forearm_R ─ Hand_R      (2-bone IK)
                       ├ Arm_L ─ UpperArm_L, Forearm_L ─ Hand_L
                       └ Cigarette (follows the right hand's fingertips)
    ========================================================= */
-function buildMartyBlocks(THREE, RoundedBoxGeometry, mergeGeometries) { // fallback if marty.glb can't load
+function buildMartyBlocks(THREE, RoundedBoxGeometry, mergeGeometries) { // Marty's look: a blocky white-haired, grinning, straw-hat-on-his-back fan homage. Same rig as ever.
   const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
   let s = 7; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647, rr = (a, b) => a + (b - a) * rnd();
   // tiny pixel textures, nearest-filtered so they read as voxels
   const pix = (w, h, draw) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; return t; };
   const TX = {
-    skin: pix(8, 8, g => { for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) { const v = rnd() * 10 - 5; g.fillStyle = `rgb(${233 + v | 0},${196 + v | 0},${166 + v | 0})`; g.fillRect(x, y, 1, 1); } }),
-    pants: pix(16, 32, (g, w, h) => { const t = ['#a9adb2', '#9ea2a7', '#b6babf', '#92969b', '#c0c4c8']; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { g.fillStyle = t[(rnd() * (rnd() < .7 ? 2 : 5)) | 0]; g.fillRect(x, y, 1, 1); } }),
-    hoodie: pix(16, 16, (g, w, h) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const v = 20 + rnd() * 8 | 0; g.fillStyle = `rgb(${v},${v},${v + 3})`; g.fillRect(x, y, 1, 1); } }),
+    skin: pix(8, 8, g => { for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) { const v = rnd() * 10 - 5; g.fillStyle = `rgb(${226 + v | 0},${168 + v | 0},${122 + v | 0})`; g.fillRect(x, y, 1, 1); } }),
+    pants: pix(16, 32, (g, w, h) => { const t = ['#f4f2ec', '#ebe8e0', '#f9f7f2', '#e2dfd6', '#fdfcf8']; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { g.fillStyle = t[(rnd() * (rnd() < .7 ? 2 : 5)) | 0]; g.fillRect(x, y, 1, 1); } }),
   };
   const MAT = {
     skin: new THREE.MeshStandardMaterial({ map: TX.skin, roughness: .75, envMapIntensity: .25 }),
-    hoodie: new THREE.MeshPhysicalMaterial({ map: TX.hoodie, roughness: .95, sheen: .5, sheenRoughness: .9, sheenColor: '#3a3a40', envMapIntensity: .25 }),
-    hoodieDark: new THREE.MeshStandardMaterial({ color: '#0c0c0d', roughness: 1, envMapIntensity: .2 }),
     pants: new THREE.MeshStandardMaterial({ map: TX.pants, roughness: .95, envMapIntensity: .25 }),
-    leather: new THREE.MeshPhysicalMaterial({ color: '#f3f2ee', roughness: .45, clearcoat: .25, envMapIntensity: .45 }),
-    sole: new THREE.MeshStandardMaterial({ color: '#f6f5f1', roughness: .6, envMapIntensity: .3 }),
-    stitch: new THREE.MeshStandardMaterial({ color: '#d9d8d3', roughness: .6 }),
-    cord: new THREE.MeshStandardMaterial({ color: '#6d6d70', roughness: .8 }),
+    cloud: new THREE.MeshStandardMaterial({ color: '#fbfbff', roughness: 1, envMapIntensity: .35 }),
+    sash: new THREE.MeshStandardMaterial({ color: '#c4231d', roughness: .85, envMapIntensity: .25 }),
+    scar: new THREE.MeshStandardMaterial({ color: '#8a3f30', roughness: .8 }),
+    sole: new THREE.MeshStandardMaterial({ color: '#5a3a22', roughness: .8, envMapIntensity: .2 }),
+    straw: new THREE.MeshStandardMaterial({ color: '#e9c96b', roughness: .9, envMapIntensity: .3 }),
+    cord: new THREE.MeshStandardMaterial({ color: '#7a5a38', roughness: .8 }),
+    eyeW: new THREE.MeshStandardMaterial({ color: '#fbfbfb', roughness: .35 }),
     eye: new THREE.MeshStandardMaterial({ color: '#0a0a0a', roughness: .4 }),
-    mouth: new THREE.MeshStandardMaterial({ color: '#6b3b2c', roughness: .7 }),
-    hair: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .8, envMapIntensity: .3 }),
-    paper: new THREE.MeshStandardMaterial({ color: '#f4f1ea', roughness: .7 }),
-    filter: new THREE.MeshStandardMaterial({ color: '#d9a066', roughness: .7 }),
-    ember: new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, .6, .1), toneMapped: false }),
+    brow: new THREE.MeshStandardMaterial({ color: '#f1f1f4', roughness: .8 }),
+    mouth: new THREE.MeshStandardMaterial({ color: '#4a1410', roughness: .7 }),
+    tongue: new THREE.MeshStandardMaterial({ color: '#c8514a', roughness: .6 }),
+    hair: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .9, envMapIntensity: .35 }),
+    bone: new THREE.MeshStandardMaterial({ color: '#f1e6cf', roughness: .6 }),
+    meat: new THREE.MeshStandardMaterial({ color: '#b4562b', roughness: .55, envMapIntensity: .4 }),
+    ember: new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, .6, .1), toneMapped: false }),  // invisible; it only marks where the steam rises
   };
   const mesh = (g, m) => { const o = new THREE.Mesh(g, m); o.castShadow = o.receiveShadow = true; return o; };
   const grp = (name, parent) => { const g = new THREE.Group(); g.name = name; if (parent) parent.add(g); return g; };
@@ -206,25 +207,21 @@ function buildMartyBlocks(THREE, RoundedBoxGeometry, mergeGeometries) { // fallb
   const box = (w, h, d, m) => mesh(new THREE.BoxGeometry(w, h, d), m);
   const rbox = (w, h, d, r, m) => mesh(new RoundedBoxGeometry(w, h, d, 2, Math.min(r, w / 2, h / 2, d / 2) * .999), m);
   const cyl = (r0, r1, h, m, seg = 10) => mesh(new THREE.CylinderGeometry(r0, r1, h, seg), m);
+  const sph = (r, m) => mesh(new THREE.SphereGeometry(r, 10, 8), m);
 
   const M = { HEIGHT: 1.86, hip: .93, shR: V(-.19, .53, 0), shL: V(.19, .53, 0), A: .285, B: .285,
     rest: V(-.15, .38, .2), puff: V(-.06, .58, .2), pocket: V(.08, .12, .15), poleR: V(-.8, -.5, -.3), poleL: V(.9, -.3, -.3), headY: 1.66, sitDrop: -.86 };
   const root = grp('Buddy');
 
-  // ---------- legs: pixel joggers, chunky white sneakers (AF1-style, unbranded) ----------
+  // ---------- legs: baggy white pants, bare feet in wooden sandals ----------
   const hips = grp('Hips', root); hips.position.y = M.hip;
   hips.add(at(rbox(.36, .12, .21, .02, MAT.pants), 0, -.04, 0));
-  function sneaker(side) {
-    const g = grp('Sneaker_' + side);
-    g.add(at(rbox(.135, .04, .32, .015, MAT.sole), 0, .02, .03));
-    for (let i = 0; i < 6; i++) g.add(at(box(.137, .003, .3, MAT.stitch), 0, .006 + i * .0055, .03));       // sole ribbing
-    g.add(at(rbox(.125, .075, .27, .035, MAT.leather), 0, .075, .015));
-    g.add(at(rbox(.12, .045, .09, .022, MAT.leather), 0, .06, .135));                                      // toe box
-    g.add(at(rbox(.118, .06, .085, .025, MAT.leather), 0, .115, -.085));                                   // collar
-    g.add(at(rbox(.07, .03, .13, .012, MAT.leather), 0, .118, .04));                                       // tongue
-    for (let i = 0; i < 4; i++) g.add(at(rbox(.075, .007, .012, .003, MAT.sole), 0, .121 + i * .002, .1 - i * .028));
-    for (const x of [-1, 1]) g.add(at(rbox(.004, .03, .16, .002, MAT.stitch), x * .064, .07, .01));
-    g.add(at(rbox(.05, .03, .006, .003, MAT.stitch), 0, .1, -.13));                                        // heel tab
+  function sandal(side) {
+    const g = grp('Sneaker_' + side);                                                                     // (name kept: the page host looks the feet up by it)
+    g.add(at(rbox(.13, .03, .31, .012, MAT.sole), 0, .015, .03));
+    g.add(at(rbox(.1, .055, .22, .025, MAT.skin), 0, .056, .0));                                           // foot
+    g.add(at(rbox(.095, .03, .075, .015, MAT.skin), 0, .045, .13));                                        // toes
+    g.add(at(rbox(.115, .014, .05, .005, MAT.sash), 0, .09, .03));                                         // strap
     return g;
   }
   const legs = {};
@@ -236,63 +233,72 @@ function buildMartyBlocks(THREE, RoundedBoxGeometry, mergeGeometries) { // fallb
     shin.add(at(rbox(.18, .3, .2, .025, MAT.pants), o * .003, -.13, .004));
     shin.add(at(rbox(.2, .1, .21, .03, MAT.pants), 0, -.3, .015));                                         // bunched hem
     for (let i = 0; i < 3; i++) shin.add(at(rbox(.2, .025, .16, .01, MAT.pants), rr(-.006, .006), -.2 - i * .035, rr(.03, .05), rr(-.1, .1), 0, rr(-.08, .08)));
-    const sn = sneaker(side); sn.scale.setScalar(1.2); sn.position.set(0, -.49, .04); sn.rotation.y = side === 'L' ? -.06 : .08; shin.add(sn);
+    const sn = sandal(side); sn.scale.setScalar(1.2); sn.position.set(0, -.49, .04); sn.rotation.y = side === 'L' ? -.06 : .08; shin.add(sn);
     legs[side] = { leg, shin };
   }
 
-  // ---------- torso: oversized black hoodie ----------
+  // ---------- torso: bare chest with the X scar, a red sash, a white cloud collar, the straw hat on his back ----------
   const torso = grp('Torso', root); torso.position.y = M.hip;
-  torso.add(at(rbox(.38, .56, .23, .03, MAT.hoodie), 0, .27, 0));
-  torso.add(at(rbox(.385, .06, .235, .02, MAT.hoodie), 0, -.02, 0));                          // ribbed hem
-  torso.add(at(rbox(.25, .12, .02, .01, MAT.hoodie), 0, .12, .118));                          // kangaroo pocket
-  torso.add(at(box(.24, .005, .004, MAT.hoodieDark), 0, .18, .129));
-  for (const sx of [-1, 1]) torso.add(at(box(.004, .11, .004, MAT.hoodieDark), sx * .125, .12, .129, 0, 0, sx * .2));
-  // hood resting on the back + collar
-  torso.add(at(rbox(.3, .2, .09, .04, MAT.hoodie), 0, .48, -.14, -.18));
-  torso.add(at(rbox(.2, .11, .035, .02, MAT.hoodieDark), 0, .48, -.19, -.18));
-  torso.add(at(rbox(.26, .05, .2, .02, MAT.hoodie), 0, .56, 0));
-  for (const sx of [-1, 1]) { torso.add(at(cyl(.005, .005, .12, MAT.cord, 8), sx * .045, .44, .119)); torso.add(at(cyl(.007, .007, .022, MAT.stitch, 8), sx * .045, .37, .119)); }
+  torso.add(at(rbox(.38, .56, .23, .03, MAT.skin), 0, .27, 0));
+  for (const sz of [-1, 1]) torso.add(at(box(.016, .24, .006, MAT.scar), 0, .36, .118, 0, 0, sz * .62));    // X scar
+  torso.add(at(rbox(.41, .09, .25, .03, MAT.sash), 0, .01, 0));                                           // sash
+  torso.add(at(rbox(.07, .07, .04, .015, MAT.sash), .1, 0, .13));                                         // knot
+  for (const sx of [0, 1]) torso.add(at(rbox(.04, .13, .015, .005, MAT.sash), .09 + sx * .04, -.09, .135, 0, 0, (sx ? -1 : 1) * .12));
+  { const n = 9; for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; torso.add(at(sph(rr(.055, .075), MAT.cloud), Math.sin(a) * .16, .56 + rr(-.01, .02), Math.cos(a) * .12)); }
+    for (const sx of [-1, 1]) torso.add(at(sph(.085, MAT.cloud), sx * .21, .5, 0)); }                      // collar + shoulder puffs
+  { const hat = grp('Hat', torso); hat.position.set(0, .4, -.17); hat.rotation.x = Math.PI / 2 - .12;     // hangs flat against his back
+    hat.add(cyl(.2, .2, .012, MAT.straw, 20)); hat.add(at(cyl(.095, .105, .085, MAT.straw, 16), 0, .045, 0)); hat.add(at(cyl(.108, .108, .02, MAT.sash, 16), 0, .02, 0));
+    for (const sx of [-1, 1]) torso.add(at(cyl(.004, .004, .22, MAT.cord, 6), sx * .05, .52, -.1, -.5, 0, sx * .3)); }
 
-  // ---------- head: the voxel cube, face and hair ----------
+  // ---------- head: the voxel cube, a wide grin, and wild white hair ----------
   const neck = grp('Neck', torso); neck.position.y = .6;
   neck.add(at(box(.12, .1, .11, MAT.skin), 0, .02, 0));
   const head = grp('Head', neck); head.position.set(0, .085, .01);
   const face = grp('Face', head); face.scale.setScalar(.727); face.position.y = -.03;           // built in the original 0.44 units
   face.add(at(box(.44, .44, .44, MAT.skin), 0, .22, 0));
-  for (const sx of [-1, 1]) face.add(at(box(.06, .085, .012, MAT.eye), sx * .095, .2, .222));
-  face.add(at(box(.07, .012, .01, MAT.mouth), .01, .1, .221));
-  { const VX = .058, geos = [], col = new THREE.Color(), palette = ['#24170f', '#1a110b', '#2e1e13', '#3a271a', '#6b4a2e', '#8a6440'];
+  for (const sx of [-1, 1]) {
+    face.add(at(box(.1, .115, .012, MAT.eyeW), sx * .105, .245, .222));                         // wide open eyes
+    face.add(at(box(.044, .066, .012, MAT.eye), sx * .097, .245, .229));
+    face.add(at(box(.11, .03, .012, MAT.brow), sx * .105, .33, .222, 0, 0, sx * -.12));
+  }
+  face.add(at(box(.012, .05, .008, MAT.scar), .105, .165, .222));                               // scar under his left eye
+  face.add(at(box(.034, .01, .008, MAT.scar), .105, .18, .222)); face.add(at(box(.034, .01, .008, MAT.scar), .105, .15, .222));
+  face.add(at(box(.28, .1, .012, MAT.mouth), 0, .095, .221));                                   // the grin
+  face.add(at(box(.26, .034, .014, MAT.eyeW), 0, .128, .224));                                  // teeth
+  face.add(at(box(.12, .03, .014, MAT.tongue), 0, .066, .224));
+  { const VX = .058, geos = [], col = new THREE.Color(), palette = ['#ffffff', '#f6f7fb', '#e9ecf5', '#dfe3ef', '#cfd5e6', '#efe9ff'];
     const addV = (x, y, z) => { const g = new THREE.BoxGeometry(VX * rr(.92, 1.1), VX * rr(.92, 1.15), VX * rr(.92, 1.1)); g.translate(x, y, z);
-      const r = rnd(); col.set(palette[r < .5 ? 0 : r < .7 ? 1 : r < .82 ? 2 : r < .9 ? 3 : r < .96 ? 4 : 5]);
+      const r = rnd(); col.set(palette[r < .45 ? 0 : r < .7 ? 1 : r < .84 ? 2 : r < .93 ? 3 : r < .97 ? 4 : 5]);
       const c = new Float32Array(g.attributes.position.count * 3); for (let i = 0; i < c.length; i += 3) { c[i] = col.r; c[i + 1] = col.g; c[i + 2] = col.b; }
       g.setAttribute('color', new THREE.BufferAttribute(c, 3)); g.deleteAttribute('uv'); geos.push(g); };
     const H = .44, half = .22, n = 9;
-    for (let i = 0; i < n; i++) for (let k = 0; k < n; k++) {            // top: messy 1–3 voxel stacks
-      const x = -half - .02 + i * (H + .04) / (n - 1), z = -half - .02 + k * (H + .04) / (n - 1), stack = 1 + (rnd() < .55 ? 1 : 0) + (rnd() < .2 ? 1 : 0);
-      for (let q = 0; q < stack; q++) addV(x + rr(-.012, .012), H + VX * .35 + q * VX * .8, z + rr(-.012, .012)); }
-    for (let i = 0; i < n; i++) { const x = -half + i * H / (n - 1), drop = 1 + (rnd() * 2.6 | 0); for (let d = 0; d < drop; d++) addV(x, H - d * VX * .9, half + VX * .25 + rr(0, .01)); } // fringe
+    for (let i = 0; i < n; i++) for (let k = 0; k < n; k++) {            // top: wild, uneven 1–4 voxel stacks
+      const x = -half - .02 + i * (H + .04) / (n - 1), z = -half - .02 + k * (H + .04) / (n - 1), stack = 1 + (rnd() < .7 ? 1 : 0) + (rnd() < .45 ? 1 : 0) + (rnd() < .2 ? 1 : 0);
+      for (let q = 0; q < stack; q++) addV(x + rr(-.014, .014), H + VX * .35 + q * VX * .8, z + rr(-.014, .014)); }
+    for (let i = 0; i < n; i++) { const x = -half + i * H / (n - 1), drop = 1 + (rnd() * 1.6 | 0); for (let d = 0; d < drop; d++) addV(x, H - d * VX * .9, half + VX * .25 + rr(0, .01)); } // fringe, kept short so the eyes stay clear
     for (const sx of [-1, 1]) for (let k = 0; k < n; k++) { const z = -half + k * H / (n - 1), drop = (k < 4 ? 5 : 3) + (rnd() * 2 | 0); for (let d = 0; d < drop; d++) addV(sx * (half + VX * .3), H - d * VX * .9, z); } // sides
     for (let i = 0; i < n; i++) { const x = -half + i * H / (n - 1), drop = 6 + (rnd() * 2 | 0); for (let d = 0; d < drop; d++) addV(x, H - d * VX * .9, -half - VX * .3 - (d > 4 ? .01 : 0)); } // back
     const hair = mesh(mergeGeometries(geos), MAT.hair); hair.name = 'Hair'; face.add(hair); }
 
-  // ---------- arms: hoodie sleeves and cube hands. 2-bone IK places them each frame ----------
+  // ---------- arms: bare arms, white cloud cuffs, cube hands. 2-bone IK places them each frame ----------
   function makeArm(side) {
     const arm = grp('Arm_' + side, torso);
-    const upper = grp('UpperArm_' + side, arm); upper.add(at(rbox(.13, .3, .15, .03, MAT.hoodie), 0, -.14, 0));
-    const fore = grp('Forearm_' + side, arm); fore.add(at(rbox(.125, .25, .145, .03, MAT.hoodie), 0, -.12, 0)); fore.add(at(rbox(.11, .045, .13, .015, MAT.hoodie), 0, -.255, 0));
+    const upper = grp('UpperArm_' + side, arm); upper.add(at(rbox(.12, .3, .14, .03, MAT.skin), 0, -.14, 0));
+    const fore = grp('Forearm_' + side, arm); fore.add(at(rbox(.115, .25, .135, .03, MAT.skin), 0, -.12, 0)); fore.add(at(sph(.085, MAT.cloud), 0, -.235, 0));
     const hand = grp('Hand_' + side, fore); hand.position.y = -M.B; hand.add(at(box(.085, .085, .085, MAT.skin), 0, -.03, 0));
     return { arm, upper, fore, hand, A: M.A, B: M.B };
   }
   const armR = makeArm('R'), armL = makeArm('L');
 
-  // ---------- cigarette (filter at the fingertips, lit end out) ----------
+  // ---------- a bone of meat in his right fist (the old cigarette slot: same name, same grip) ----------
   const cig = grp('Cigarette', torso);
   cig.quaternion.setFromUnitVectors(V(0, 1, 0), V(-1, .3, .55).normalize());
-  cig.add(at(cyl(.011, .011, .11, MAT.paper, 12), 0, .07, 0));
-  cig.add(at(cyl(.0115, .0115, .03, MAT.filter, 12), 0, 0, 0));
-  const ember = at(cyl(.0118, .0118, .012, MAT.ember, 12), 0, .131, 0); ember.castShadow = false; cig.add(ember);
+  cig.add(at(cyl(.012, .012, .2, MAT.bone, 10), 0, .06, 0));
+  for (const sx of [-1, 1]) cig.add(at(sph(.02, MAT.bone), sx * .012, .165, 0));
+  const chunk = at(sph(.058, MAT.meat), 0, .1, 0); chunk.scale.set(1, 1.15, 1); cig.add(chunk);
+  const ember = at(cyl(.0118, .0118, .012, MAT.ember, 12), 0, .19, 0); ember.castShadow = false; ember.visible = false; cig.add(ember);
 
-  // fingertips of the right hand, in torso space (so the cigarette is always in his fist)
+  // fingertips of the right hand, in torso space (so the meat is always in his fist)
   const _d = V(), _down = V(0, -1, 0);
   const tipOf = (out) => { _d.copy(_down).applyQuaternion(armR.fore.quaternion); return out.copy(armR.fore.position).addScaledVector(_d, M.B + .06); };
   return { root, hips, torso, neck, head, legs, armR, armL, cig, ember, MAT, M, tipOf };
@@ -685,7 +691,7 @@ blob(2.4, 1.0, -.55, ZW + .45, .45); blob(2.8, .8, BAR_X, ZW + .3, .5); blob(2.2
 /* =========================================================
    MARTY in the room
    ========================================================= */
-// his body is a file (assets/marty/marty.glb); wait for it, but never longer than 8s
+// his body is a file (assets/marty/marty.glb); wait for it, but never longer than 8s. No file = the built-in blocky Marty above.
 const MARTY_GLTF = await Promise.race([new Promise(res => gltfL.load(ASSETS + 'marty/marty.glb', res, undefined, () => res(null))), new Promise(res => setTimeout(() => res(null), 8000))]);
 const MARTY = buildMarty(THREE, RoundedBoxGeometry, mergeGeometries, MARTY_GLTF);
 const buddy = MARTY.root; island.add(buddy);
@@ -930,7 +936,7 @@ function reveal() {
    SECTION 2 · Engines: marquee, highlight-wipe heading, cursor dots, bento, detail pages
    ========================================================= */
 // marquee
-{ const items = ['People-led growth', 'Founder videos', 'Team skits', 'B2B podcasts', 'Video outbound', 'LinkedIn & X', 'Thought Leader Ads', 'Clipping', 'Pre-sold calls', 'No more ghost founders'];
+{ const items = ['Video editing', 'Motion graphics', 'Web development', 'Cyber security', 'Two startup agencies', 'Jack of all trades', 'Cut it', 'Animate it', 'Build it', 'Lock it down'];
   const html = items.map(t => `<span>${t}</span>`).join(''); document.getElementById('mqTrack').innerHTML = html + html; }
 
 // highlight-marker heading: split into visual lines, then wipe white + orange bars across each line
@@ -1044,137 +1050,82 @@ dotsFor(document.getElementById('dots'), document.getElementById('engines'));
 const STEPS = a => `<div class="d-steps">${a.map(([b, s]) => `<div class="d-step"><b>${b}</b><span>${s}</span></div>`).join('')}</div>`;
 const LIST = a => `<ul class="d-list">${a.map(([t, e]) => `<li>${t} <em>${e}</em></li>`).join('')}</ul>`;
 const OFFERS = {
-  content: { num: '01', crumb: '01 · Organic', kicker: 'People-Led Content Engine', title: 'You, but<br><em>everywhere.</em>',
-    promise: 'You and your team become the most visible voices in your category within 90 days, without anyone writing, editing or posting a thing. Ghost founder era: over.',
-    stats: [['$5.6–9.4k', 'per month, by tier'], ['< 10 hrs', 'of your time a month'], ['90 days', 'to the most-watched in your category']],
-    show: `<div class="sc-h"><h4>The cast</h4><span>Your people, not your logo</span></div>
+  content: { num: '01', crumb: '01 · Video', kicker: 'Video Editing', title: 'Raw footage,<br><em>real story.</em>',
+    promise: 'Pacing, sound and the cuts that keep people watching. I take messy footage and find the version of it that holds attention from the first second to the last.',
+    stats: [['Hook-first', 'every edit starts with the opening'], ['Sound-aware', 'mix, music and silence'], ['Any format', 'Reels, YouTube, ads']],
+    show: `<div class="sc-h"><h4>Formats I cut</h4><span>Pick the one that fits the job</span></div>
       <div class="sc-cast">
-        <div class="card cast" style="--c:#ff4500;--t:5s"><span class="live">● Posting</span><q>Why we said no to our biggest customer</q><div class="meta"><b>The founder</b><small>The why, the hot takes</small><div class="pb"><i></i></div></div></div>
-        <div class="card cast" style="--c:#182113;--t:7s"><span class="live">● Posting</span><q>The objection I hear every single week</q><div class="meta"><b>The sales lead</b><small>Objections, wins, deal stories</small><div class="pb"><i></i></div></div></div>
-        <div class="card cast" style="--c:#8a6a3f;--t:6s"><span class="live">● Posting</span><q>How it's built vs. how it's sold</q><div class="meta"><b>The engineer</b><small>How it actually works</small><div class="pb"><i></i></div></div></div>
-        <div class="card cast" style="--c:#c2410c;--t:8s"><span class="live">● Posting</span><q>Reading our weirdest support tickets</q><div class="meta"><b>The customer crew</b><small>Real tickets, real fixes</small><div class="pb"><i></i></div></div></div>
+        <div class="card cast" style="--c:#ff4500;--t:5s"><span class="live">● Cutting</span><q>The 30-second hook</q><div class="meta"><b>Short-form</b><small>Reels, Shorts, TikTok</small><div class="pb"><i></i></div></div></div>
+        <div class="card cast" style="--c:#182113;--t:7s"><span class="live">● Cutting</span><q>The story that runs twelve minutes</q><div class="meta"><b>Long-form</b><small>YouTube, interviews, talks</small><div class="pb"><i></i></div></div></div>
+        <div class="card cast" style="--c:#8a6a3f;--t:6s"><span class="live">● Cutting</span><q>Fifteen seconds to the point</q><div class="meta"><b>Promos &amp; ads</b><small>Launches, teasers, product</small><div class="pb"><i></i></div></div></div>
+        <div class="card cast" style="--c:#c2410c;--t:8s"><span class="live">● Cutting</span><q>Captions, clean and on the beat</q><div class="meta"><b>Polish</b><small>Captions, colour, sound</small><div class="pb"><i></i></div></div></div>
       </div>
-      <div class="reach"><div class="card"><b>1.6%</b><span>of followers is roughly what a company page post reaches.</span><div class="meter"><i style="--w:1.6%"></i></div></div><div class="card"><b>~5 a week</b><span>posts for every voice on LinkedIn and X, written and scheduled for them.</span><div class="meter"><i style="--w:100%"></i></div></div></div>`,
+      <div class="reach"><div class="card"><b>First 2s</b><span>is roughly how long a viewer gives your opening before deciding to scroll. That is where I start.</span><div class="meter"><i style="--w:100%"></i></div></div><div class="card"><b>Half</b><span>of every video is sound. Mix, music and well-placed silence get as much care as the picture.</span><div class="meter"><i style="--w:50%"></i></div></div></div>`,
     secs: [
-      ['What it is', `<p>Content that runs on your company's people, not its logo. You, plus your sales lead, engineers and the customer-facing crew. Company pages now reach roughly 1.6% of their followers; <strong>people reach everyone else.</strong></p><p>Founder videos, team expert clips, recurring funny-but-informative skits, posts for every voice, carousels and a newsletter.</p>`],
-      ['Skits that sell without selling', `<div class="d-chips"><span>Sales rep vs. the objection</span><span>Engineer explains it to sales</span><span>Myth vs. reality in our industry</span><span>Support reads real tickets</span><span>Day one at the company</span><span>How it's built vs. how it's sold</span></div>`],
-      ['Choose your level', `<div class="d-tiers">
-        <div class="d-tier"><h5>Remote</h5><div class="pr">$5,625<small> /mo</small></div><ul><li>We work from clips you send; the AI clone fills the gaps</li><li>15 short-form videos + 4 skits a month, 19 in total</li><li>1 YouTube long-form a month</li><li>Founder + 2 people posting</li></ul></div>
-        <div class="d-tier rec"><span class="tag-r">Recommended</span><h5>Hybrid</h5><div class="pr">$7,500<small> /mo + 1 trip</small></div><ul><li>Our crew flies in for 3 shoot days per term, remote after</li><li>20 short-form videos + 6 skits a month, 26 in total</li><li>2 YouTube long-forms a month</li><li>Founder + 4 people posting</li></ul></div>
-        <div class="d-tier"><h5>On-site</h5><div class="pr">$9,375<small> /mo + travel</small></div><ul><li>We shoot on location every month</li><li>25 short-form videos + 8 skits a month, 33 in total</li><li>4 YouTube long-forms a month</li><li>Founder + 5 people posting</li></ul></div></div>
-        <p class="d-note" style="margin-top:14px">Every tier: LinkedIn and X posts for each person (about 5 a week each), 4 carousels and 4 newsletter issues a month.<br>Pay upfront and save: a 3-month term, 5% off; the full 4 months, 10% off. Work starts within 72 hours of signing.</p>`],
-      ['How it works', STEPS([['Days 1–3', 'Kickoff within 72 hours: positioning, pillars, story bank, cast, voice capture and your AI clone.'], ['Week 2', 'The shoot, on-site or remote. Founder videos, team clips, skits and a B-roll library. First posts go live the same week.'], ['Every week', 'One batch of drafts, one 30-minute async approval, then scheduled posting across every account.'], ['Every month', "A 45-minute strategy call and a one-page report: ICP reach, engaged accounts, next month's plan."]])],
-      ['The guarantee', `<div class="d-guar"><b>Love it or leave</b>If you don't love month one, we redo it free. Still not in love? You leave with nothing more owed. Miss the agreed volume and we work free until it's delivered.</div>`]
+      ['What it is', `<p>Editing is where a pile of footage becomes something people actually watch. I handle the whole post-production pass: <strong>structure, pacing, sound and finish.</strong></p><p>Short-form for the scroll, long-form for the people who stay, and promos in between.</p>`],
+      ['What I do', LIST([['Story and structure: finding the version worth watching', 'Always'], ['Cutting for rhythm, with a strong opening and a clean ending', 'Every edit'], ['Sound: dialogue clean-up, music, effects and mix', 'Included'], ['Captions and on-screen text', 'On request'], ['Colour and finishing', 'Included'], ['Exports for every platform and aspect ratio', 'Every project']])],
+      ['How it works', STEPS([['Step 1', 'You send the footage and a short brief: the goal, the audience and a reference or two you like.'], ['Step 2', 'A rough cut to check structure and tone before any polish.'], ['Step 3', 'Notes from you, then the fine cut: sound, captions, colour.'], ['Step 4', 'Final files in every format you need.']])],
+      ['Placeholder', `<p class="d-note">Placeholder copy: swap in your real tools, turnaround and examples.</p>`]
     ] },
-  podcast: { num: '02', crumb: '02 · Podcast', kicker: 'Podcast Engine', title: 'The show is<br>the <em>excuse.</em>',
-    promise: '16+ recorded conversations with the customers, partners and investors you actually want, in your first four months. The relationships are the pipeline.',
-    stats: [['$6,000', 'per month'], ['4+', 'episodes a month'], ['~5 hrs', 'of your time a month']],
-    show: `<div class="sc-h"><h4>On air</h4><span>Your target list, recorded</span></div>
+  podcast: { num: '02', crumb: '02 · Motion', kicker: 'Motion Graphics', title: 'Everything moves<br>on <em>purpose.</em>',
+    promise: 'Titles, kinetic type and animated explainers that make an idea move and stick. Motion should explain something, not just decorate it.',
+    stats: [['Type + shapes', 'kinetic and graphic'], ['Storyboarded', 'plan first, animate second'], ['Any ratio', '16:9, 9:16, 1:1']],
+    show: `<div class="sc-h"><h4>Now rendering</h4><span>A project, start to finish</span></div>
       <div class="sc-pod">
-        <div class="card onair"><div class="top"><span class="lamp">● On air</span><span class="tc" data-tc>00:00:00</span></div><div class="bigwave" data-wave></div><div class="who"><span>You, the host</span><span>A guest from your target list</span></div></div>
+        <div class="card onair"><div class="top"><span class="lamp">● Rendering</span><span class="tc" data-tc>00:00:00</span></div><div class="bigwave" data-wave></div><div class="who"><span>Layer: title</span><span>Easing: ease-out</span></div></div>
         <div class="guests">
-          <div class="card guest"><span class="ep">Ep 01</span><div><b>The dream buyer</b><small>A VP at an account you'd love to close</small></div></div>
-          <div class="card guest"><span class="ep">Ep 02</span><div><b>The partner</b><small>Someone whose audience is your pipeline</small></div></div>
-          <div class="card guest"><span class="ep">Ep 03</span><div><b>The investor</b><small>The fund you want on your next round</small></div></div>
-          <div class="card guest"><span class="ep">Ep 04</span><div><b>The customer</b><small>A happy one. Quietly, a proof video.</small></div></div>
+          <div class="card guest"><span class="ep">01</span><div><b>Style frames</b><small>The look, agreed before anything moves</small></div></div>
+          <div class="card guest"><span class="ep">02</span><div><b>Animatic</b><small>Timing locked before the polish</small></div></div>
+          <div class="card guest"><span class="ep">03</span><div><b>Animation</b><small>Type, shapes and transitions</small></div></div>
+          <div class="card guest"><span class="ep">04</span><div><b>Delivery</b><small>Every ratio, ready to post</small></div></div>
         </div>
       </div>
-      <div class="flow"><span class="k">1 episode</span><i>→</i><span>~5 clips</span><i>→</i><span>Thumbnails + show notes</span><i>→</i><span>YouTube, Spotify, Apple</span><i>→</i><span>Guest highlight + your follow-up</span></div>`,
+      <div class="flow"><span class="k">Storyboard</span><i>→</i><span>Style frames</span><i>→</i><span>Animation</span><i>→</i><span>Render</span><i>→</i><span>Every format</span></div>`,
     secs: [
-      ['What it is', `<p>A done-for-you video podcast with you as host. Guests come straight from your target-account list, so every episode is a <strong>warm, recorded conversation</strong> with someone you want to sell to, partner with or raise from.</p><p>Customers appear too, which quietly gives you proof videos. Meanwhile I book you onto other people's shows to borrow their audiences.</p>`],
-      ['Every month', LIST([['Video episodes, recorded remotely or in person', '4+'], ['Guest research, booking and prep packs from your target list', '4+ guests'], ["Interview questions built from each guest's work and your goals", 'Every episode'], ['Full audio and video edit with intro and outro', '4+'], ['Short clips, thumbnails and show notes', '~22 clips'], ['Publishing to YouTube, Spotify and Apple', 'Every episode'], ['Guest thank-you, highlight clip and suggested follow-up', 'Every guest'], ['You, booked as a guest on other shows', '2']])],
-      ['How it works', STEPS([['Week 1', 'Kickoff within 72 hours. Show concept, name, cover art and trailer. Recording kit list. First four guests booked from your target list.'], ['Week 3', 'Episode one goes live. Then weekly: record for about an hour, approve, publish.'], ['After every episode', "Clips go out across your channels and the guest's. They get a highlight clip; you get a follow-up script."]])],
-      ['The guarantee', `<div class="d-guar"><b>Live in 21 days</b>Live within 21 days of kickoff, or the setup fee is refunded. Four or more target-list guests booked every month, or we keep working free until they are.</div><p class="d-note" style="margin-top:14px">Studio hire and travel for in-person episodes are billed at cost. Remote recording avoids both.<br>Pay upfront and save: a 3-month term, 5% off; the full 4 months, 10% off. Work starts within 72 hours of signing.</p>`]
+      ['What it is', `<p>Motion graphics are how a message gets <strong>noticed, understood and remembered.</strong> I design and animate the pieces: titles, type, shapes and the transitions that tie a video together.</p><p>Standalone animations, or the finishing layer on top of an edit.</p>`],
+      ['What I make', LIST([['Kinetic typography and animated titles', 'Type'], ['Animated explainers and product intros', 'Explain'], ['Logo stings and lower thirds', 'Brand'], ['Transitions and motion for edited video', 'Polish'], ['Social cut-downs in vertical, square and wide', 'Formats']])],
+      ['How it works', STEPS([['Step 1', 'Storyboard and style frames: the look is agreed before anything moves.'], ['Step 2', 'Animatic, then animation: timing first, then the polish and the easing.'], ['Step 3', 'Render and delivery in every aspect ratio you need.']])],
+      ['Placeholder', `<p class="d-note">Placeholder copy: swap in your real tools, turnaround and examples.</p>`]
     ],
     init(root) {
       const w = root.querySelector('[data-wave]'); for (let i = 0; i < 64; i++) { const h = 14 + Math.abs(Math.sin(i * .41) * 70 + Math.sin(i * 1.3) * 30); w.insertAdjacentHTML('beforeend', `<i style="--h:${Math.min(100, h).toFixed(0)}%;--d:${(i % 11) / 11}"></i>`); }
       const tc = root.querySelector('[data-tc]'), t0 = performance.now();
       return setInterval(() => { const s = Math.floor((performance.now() - t0) / 1000) + 1532; tc.textContent = [s / 3600, s / 60 % 60, s % 60].map(v => String(Math.floor(v)).padStart(2, '0')).join(':'); }, 250);
     } },
-  revenue: { num: '03', crumb: '03 · Outbound', kicker: 'Revenue Engine', title: 'Meetings,<br>not <em>mysteries.</em>',
-    promise: "Video outreach to accounts that already know your people, so sales calls start warm instead of cold. Beyond a flat base, you pay only when a meeting turns into a customer.",
-    stats: [['$3,000', 'base per month'], ['$400', 'per closed customer, nothing per meeting'], ['~1 hr', 'of your time a week']],
-    show: `<div class="sc-h"><h4>A ramped month of warm meetings</h4><span>Illustrative month</span></div>
-      <div class="sc-rev">
-        <div class="card mcal"><div class="count"><b data-mtg>0</b><span>held, qualified<br>meetings this month</span></div><div class="grid" data-cal></div></div>
-        <div class="card calc" data-calc><h5>Run your own maths</h5>
-          <label>Average deal size <output data-o="deal"></output><input type="range" min="10000" max="100000" step="5000" value="30000" data-i="deal"></label>
-          <label>Meetings a month <output data-o="mtg"></output><input type="range" min="6" max="20" step="1" value="10" data-i="mtg"></label>
-          <label>Your close rate <output data-o="rate"></output><input type="range" min="5" max="40" step="1" value="20" data-i="rate"></label>
-          <div class="res"><div><b data-r="cust"></b><span>new customers a month</span></div><div><b data-r="acv"></b><span>annual contract value added</span></div><div><b data-r="fee"></b><span>in fees that month</span></div><div class="x"><b data-r="x"></b><span>return on fees</span></div></div>
-        </div>
-      </div>`,
+  revenue: { num: '03', crumb: '03 · Web', kicker: 'Web Design & Development', title: 'Built by hand,<br>not by <em>template.</em>',
+    promise: 'Fast, clean, responsive sites, from a single landing page to something interactive and a little bit ambitious.',
+    stats: [['Hand-built', 'no template soup'], ['Responsive', 'phone to desktop'], ['Interactive', '3D and motion where it helps']],
     secs: [
-      ["What's in it", LIST([['500 target accounts a quarter, researched account by account against your ICP', 'Built for you'], ['AI-driven personalisation: every message written around that company\'s own news, hires and posts', 'Per account'], ['Video-led sequences from you or your sales lead, with short personal videos recorded in a weekly batch', 'Email + LinkedIn'], ['Warm-signal follow-up: anyone who engages with your content or ads jumps the queue', 'Always on'], ['Sales video kit: a customer-story video and objection-handling clips', 'Each quarter'], ['Meetings booked straight onto your calendar, with a weekly report', 'Weekly']])],
-      ['Per new customer, honestly', `<div class="vs"><div class="row"><span>In-house SDR, labour only</span><div class="track"><i style="--a:45%;--w:45%">$2,250–4,500</i></div></div><div class="row"><span>Revenue Engine</span><div class="track"><i class="hot" style="--w:14%">$400, only when they sign</i></div></div></div><p class="d-note" style="margin-top:16px">An SDR costs $450–900 per meeting; at a 1-in-5 close rate that's $2,250–4,500 per customer. Plus our $3,000 base. The calculator above uses your numbers; we'll use your real close rate on the call.<br>Pay upfront and save: a 3-month term, 5% off; the full 4 months, 10% off. Work starts within 72 hours of signing.</p>`],
-      ['How it works', STEPS([['Week 1', 'Kickoff within 72 hours. Define "qualified" in writing, research the list, set up separate warmed sending domains. Never from your main domain.'], ['Weeks 2–6', 'First sequences go out in week two; then we test angles. Honest note: outbound still takes 60–90 days to hit full speed.'], ['Month 3 on', 'Scale the winning angles and add retargeting of the target list.']])],
-      ['The guarantee', `<div class="d-guar"><b>Meetings or month four is free</b>If fewer than 6 held, qualified meetings land in month three, the month-four base fee is waived.</div><p class="d-note" style="margin-top:14px">Conditions: you record the weekly videos and reply to leads within 24 hours.</p>`]
-    ],
-    init(root) {
-      const cal = root.querySelector('[data-cal]'), T = ['VP Sales · intro', 'Head of RevOps', 'CTO · demo', 'Founder · intro', 'VP Eng · demo', 'CRO · intro', 'Dir. Growth', 'COO · demo', 'VP Mktg · intro', 'Head of Data'];
-      const M = [1, 3, 4, 7, 9, 11, 12, 15, 17, 18]; let k = 0;
-      ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].forEach(d => cal.insertAdjacentHTML('beforeend', `<span class="dow">${d}</span>`));
-      for (let i = 0; i < 20; i++) { const m = M.includes(i); cal.insertAdjacentHTML('beforeend', `<span class="d${m ? ' m' : ''}" ${m ? `data-t="${T[k]}" style="--i:${k++}"` : ''}>${i + 1}</span>`); }
-      const n = root.querySelector('[data-mtg]'); let c = 0; const iv = setInterval(() => { if (c < 10 && detail.classList.contains('open')) n.textContent = ++c; if (c >= 10) clearInterval(iv); }, 140);
-      const el = root.querySelector('[data-calc]'), $ = s => el.querySelector(s), money = v => v >= 1e6 ? `$${(v / 1e6).toFixed(2)}M` : `$${Math.round(v).toLocaleString('en-US')}`;
-      const run = () => {
-        const deal = +$('[data-i=deal]').value, mtg = +$('[data-i=mtg]').value, rate = +$('[data-i=rate]').value / 100;
-        el.querySelectorAll('input').forEach(i => i.style.setProperty('--p', `${(i.value - i.min) / (i.max - i.min) * 100}%`));
-        $('[data-o=deal]').textContent = money(deal); $('[data-o=mtg]').textContent = mtg; $('[data-o=rate]').textContent = Math.round(rate * 100) + '%';
-        const cust = mtg * rate, acv = cust * deal, fee = 3000 + 400 * cust;
-        $('[data-r=cust]').textContent = cust % 1 ? cust.toFixed(1) : cust; $('[data-r=acv]').textContent = money(acv); $('[data-r=fee]').textContent = money(fee); $('[data-r=x]').textContent = (acv / fee).toFixed(1) + '×';
-      };
-      el.addEventListener('input', run); run(); return iv;
-    } },
-  paid: { num: '04', crumb: '04 · Paid', kicker: 'Paid Video Engine', title: 'Pour fuel on<br>what <em>burns.</em>',
-    promise: "Turn the content that's already winning into ads and clipping campaigns that bring in demos at a lower cost than you pay today.",
-    stats: [['$3,750', 'per month + ad spend'], ['10', 'new video ads a month'], ['Per view', 'clipping, billed on results']],
-    show: `<div class="sc-h"><h4>Cost per demo, going the right way</h4><span>Illustrative. Your baseline is measured in week one.</span></div>
-      <div class="sc-paid">
-        <div class="card chart"><div class="kpi"><div><b>Cost per demo <em>↓</em></b></div><span>Beat your baseline by day 60, or the fee is waived until you do.</span></div><svg viewBox="0 0 620 280" aria-hidden="true"><defs><linearGradient id="paidGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3245ff" stop-opacity=".28"/><stop offset="1" stop-color="#3245ff" stop-opacity="0"/></linearGradient></defs>
-          <line class="gl" x1="10" x2="610" y1="250" y2="250"/><line class="gl" x1="10" x2="610" y1="170" y2="170"/>
-          <line class="base" x1="10" x2="610" y1="70" y2="70"/><text x="12" y="58">YOUR BASELINE</text>
-          <path class="area" d="M10 70 L85 82 L160 66 L235 98 L310 116 L385 132 L460 154 L535 172 L610 188 L610 250 L10 250Z"/>
-          <path class="ln" d="M10 70 L85 82 L160 66 L235 98 L310 116 L385 132 L460 154 L535 172 L610 188"/>
-          <g class="flag"><line x1="460" x2="460" y1="154" y2="250" stroke="#3245ff" stroke-dasharray="3 4"/><circle cx="460" cy="154" r="6" fill="#3245ff"/><rect x="418" y="112" width="84" height="26" rx="13"/><text x="460" y="129" text-anchor="middle">DAY 60</text></g>
-          <text x="12" y="272">DAY 0</text><text x="235" y="272" text-anchor="middle">DAY 30</text><text x="460" y="272" text-anchor="middle">DAY 60</text><text x="608" y="272" text-anchor="end">DAY 90</text></svg></div>
-        <div class="ads">
-          <div class="card ad" style="--c:#3245ff"><span class="win">Winner</span><span class="pl"></span><small>Skit cut</small><b>Sales rep vs. the objection</b></div>
-          <div class="card ad" style="--c:#0f1338"><span class="pl"></span><small>Founder hook</small><b>The 15-second why</b></div>
-          <div class="card ad" style="--c:#ff4500"><span class="pl"></span><small>Customer proof</small><b>"We cut onboarding in half"</b></div>
-          <div class="card ad" style="--c:#5b6bff"><span class="pl"></span><small>Thought Leader Ad</small><b>Your best post, boosted</b></div>
-          <div class="card ad" style="--c:#1d2470"><span class="pl"></span><small>Retargeting</small><b>For people who watched</b></div>
-          <div class="card ad" style="--c:#8fa0ff"><span class="pl"></span><small>Clipping</small><b>Paid per verified view</b></div>
-        </div>
-      </div>`,
-    secs: [
-      ["What's in it", LIST([['Video ad creative cut from skits, founder videos and customer proof, tested head-to-head', '10 a month'], ["Thought Leader Ads: your team's best posts boosted to target titles and accounts", 'LinkedIn'], ['Retargeting people who watched, visited, or sit on your target list', 'Always on'], ['Conversion campaigns aimed at a demo or call, managed weekly', 'LinkedIn + Meta'], ['Clipping: long-form cut into clips by a paid clipper network; you pay only for verified views', 'Per 1,000 views']])],
-      ['Pricing', `<div class="d-tiers">
-        <div class="d-tier rec"><span class="tag-r">The engine</span><h5>Management + creative</h5><div class="pr">$3,750<small> /mo</small></div><ul><li>10 new video ads a month</li><li>Weekly campaign management</li><li>Thought Leader Ads + retargeting</li></ul></div>
-        <div class="d-tier"><h5>Clipping, broad</h5><div class="pr">$3<small> per 1,000 views</small></div><ul><li>Big audiences, hiring, fundraising buzz</li><li>Verified views only</li></ul></div>
-        <div class="d-tier"><h5>Clipping, niche B2B</h5><div class="pr">$4<small> per 1,000 views</small></div><ul><li>Tighter, more relevant audiences</li><li>Verified views only</li></ul></div></div>
-        <p class="d-note" style="margin-top:14px">Ad spend goes on your own card, at cost. LinkedIn needs roughly $3–6k a month to learn.<br>Pay upfront and save: a 3-month term, 5% off; the full 4 months, 10% off. Work starts within 72 hours of signing.</p>`],
-      ['The guarantee', `<div class="d-guar"><b>Beat your baseline</b>If cost per demo isn't better than your pre-engagement baseline by day 60, the management fee is waived until it is.</div><p class="d-note" style="margin-top:14px">Honest limits: clipping buys reach, not targeting. It's brilliant for awareness, hiring and fundraising; it is not a precision sales tool.</p>`]
+      ['What it is', `<p>I design and build the front end: layout, type, motion and the code underneath. <strong>One person, so design and build never drift apart.</strong></p><p>Interactive 3D, scroll-driven animation and smooth scrolling are all things I am happy to build into a site, when they help it.</p>`],
+      ['What I build', `<div class="d-chips"><span>Landing pages</span><span>Portfolio sites</span><span>Animated interfaces</span><span>Interactive 3D</span><span>Responsive layouts</span><span>Performance tuning</span></div>`],
+      ['How it works', STEPS([['Step 1', 'Wireframes and the look: layout, type and colour agreed first.'], ['Step 2', 'The build, in small pieces you can see as they land.'], ['Step 3', 'Review on a live preview link, then a round of fixes.'], ['Step 4', 'Launch and a handover, so you are never stuck.']])],
+      ['Work so far', LIST([['Neweralist Media: the company website, live at neweralistmedia.com', 'Designed and built'], ['Deep Impact: a website design for a protein brand', 'In progress'], ['Raja Harsha: a portfolio website design', 'Design']])],
+      ['Placeholder', `<p class="d-note">Placeholder copy: swap in your real stack, turnaround and more examples.</p>`]
     ] },
-  full: { num: '360', crumb: '360 · Everything', kicker: 'The Full 360', title: 'One partner.<br><em>Four engines.</em>',
-    promise: "A full marketing department's output for less than the cost of one team, with exactly one person accountable for all of it. That person is me.",
-    stats: [['from $15,620', 'per month (Remote tier)'], ['Up to 10%', 'more off when you pay upfront'], ['Up to 80%', 'cheaper than building it yourself']],
-    show: `<div class="sc-h"><h4>Build it yourself, or don't</h4><span>Monthly</span></div>
-      <div class="cmp">
-        <div class="row"><span>Four vendors or five hires, all managed by you</span><div class="bar"><i class="them" style="--w:100%">$33,650 – $88,000</i></div></div>
-        <div class="row"><span>The Full 360, one accountable human</span><div class="bar"><i class="us" style="--w:19%">from $15,620</i></div></div>
-      </div>
+  paid: { num: '04', crumb: '04 · Security', kicker: 'Cyber Security', title: 'Break it<br>to <em>fix it.</em>',
+    promise: 'Security is a mindset before it is a toolset. I am an enthusiast: genuinely curious about how things break, and I bring that habit to everything I build.',
+    stats: [['Curious', 'about how it breaks'], ['Defence-minded', 'fix it, do not just find it'], ['Always learning', 'it is a moving target']],
+    secs: [
+      ['What it is', `<p>I think about <strong>how a thing could be abused</strong> while I am building it, not after it ships. That habit costs little at the start and a lot to bolt on later.</p>`],
+      ['What that looks like', LIST([['Thinking through how a project could be attacked before the first line of code', 'Early'], ['Validating inputs and keeping dependencies up to date', 'Always'], ['Sensible headers, permissions and secrets handling', 'Every build'], ['Staying curious about how attacks evolve', 'Ongoing']])],
+      ['An honest limit', `<div class="d-guar"><b>Enthusiast, not auditor</b>I will tell you what I know, what I am still learning, and when you need a dedicated security professional.</div>`],
+      ['Placeholder', `<p class="d-note">Placeholder copy: swap in your real focus areas, certifications and write-ups.</p>`]
+    ] },
+  full: { num: '×2', crumb: '×2 · Co-founder', kicker: 'The Co-founder Hat', title: 'Two agencies.<br><em>One of me.</em>',
+    promise: 'I co-founded two startup agencies, so I have sat on both sides of the table: the person briefing the work and the person who has to deliver it.',
+    stats: [['2', 'startup agencies co-founded'], ['4', 'crafts under one roof'], ['1', 'person to talk to']],
+    show: `<div class="sc-h"><h4>Jump to a craft</h4><span>One person behind all four</span></div>
       <div class="eng4">
-        <button class="card" data-go="content"><small>01</small><b>People-Led Content</b></button>
-        <button class="card" data-go="podcast"><small>02</small><b>Podcast</b></button>
-        <button class="card" data-go="revenue"><small>03</small><b>Revenue</b></button>
-        <button class="card" data-go="paid"><small>04</small><b>Paid Video</b></button>
+        <button class="card" data-go="content"><small>01</small><b>Video Editing</b></button>
+        <button class="card" data-go="podcast"><small>02</small><b>Motion Graphics</b></button>
+        <button class="card" data-go="revenue"><small>03</small><b>Web Design &amp; Development</b></button>
+        <button class="card" data-go="paid"><small>04</small><b>Cyber Security</b></button>
       </div>`,
     secs: [
-      ['What it replaces', LIST([['People-led content: a 4-person content team', '$23,000–35,000'], ['A podcast with booked guests: a B2B podcast agency', '$2,000–20,000+'], ['Booked sales meetings: an appointment-setting retainer', '$3,000–15,000'], ['Video ads that convert: creative agency + LinkedIn ads management', '$5,650–18,000']])],
-      ['The bonus stack', `<div class="bonus">${[['AI Clone Kit', 'Your likeness and voice, so content continues while you travel', '$2,500 value'], ['Profile Rebuild', 'For every on-camera person', '$1,500 value'], ['Category Gap Report', "You vs. three competitors' founders", '$1,500 value'], ['Hiring Magnet Series', '3 culture videos a quarter', '$3,000 / qtr'], ['Investor Update Series', 'A monthly founder update', '$1,000 / mo'], ['Sales Asset Pack', '3 clips a month for your sales team', '$1,500 / mo'], ['The 15-Minute Playbook', 'The daily routine only you can do', '$500 value'], ['Direct line to Yohith', 'WhatsApp or Slack, answered by me, not a manager', 'Every engine']].map(([b, s, e]) => `<div class="card"><div><b>${b}</b><small>${s}</small></div><em>${e}</em></div>`).join('')}</div>`],
-      ['Monthly, by content tier', `<div class="d-tiers"><div class="d-tier"><h5>Remote</h5><div class="pr">$15,620<small> /mo</small></div></div><div class="d-tier rec"><span class="tag-r">Recommended</span><h5>Hybrid</h5><div class="pr">$17,210<small> /mo</small></div></div><div class="d-tier"><h5>On-site</h5><div class="pr">$18,810<small> /mo</small></div></div></div><p class="d-note" style="margin-top:14px">Already 15% under the four engines bought separately. Plus $400 per closed customer from outbound. Every bonus included, setup waived. Ad spend, clipping budgets and travel are at cost and never discounted.</p>`],
-      ['The terms', `<p>3- or 4-month terms, then month-to-month with 30 days' notice. Billed monthly in advance, in USD. The bigger the upfront, the bigger the discount: pay a 3-month term upfront and take 5% off; pay the full 4 months and take 10% off. Work starts within 72 hours of signing, and you get a direct line to me from day one. <strong>Every engine carries its own guarantee.</strong></p>`]
+      ['What it means', `<p>Running agencies teaches you what clients actually need: <strong>clear scope, honest timelines and someone accountable.</strong> That shapes how I take on every project, agency or not.</p>`],
+      ['What I bring to a team', LIST([['Delivery: scoping work and shipping it on time', 'Agency-tested'], ['Range: video, motion, web and security in one head', 'Four crafts'], ['Communication: one clear point of contact', 'No hand-offs'], ['Taste: knowing when something is finished', 'Always']])],
+      ['The agencies', LIST([['Neweralist Media: a B2B media house for founders, investors and M&A advisors', 'Co-founder'], ['Ascent Studio, formerly Vantix Growth', 'Co-founder']])],
+      ['Placeholder', `<p class="d-note">Placeholder copy: say what Ascent Studio does and what your role is at each agency.</p>`]
     ],
     init(root) { root.querySelectorAll('[data-go]').forEach(b => b.onclick = () => goTo(b.dataset.go)); } },
 };
@@ -1190,7 +1141,7 @@ function renderDetail(k) {
     <div class="d-stats">${o.stats.map(([b, s]) => `<div class="d-stat"><b>${b}</b><span>${s}</span></div>`).join('')}</div>
     ${o.show ? `<div class="d-show">${o.show}</div>` : ''}
     ${o.secs.map(([h, c]) => `<div class="d-sec"><h4>${h}</h4><div>${c}</div></div>`).join('')}
-    <div class="d-cta"><h4>Let's see if your team<br>is the next media channel.</h4><div class="ctas" style="margin:0"><a class="btn primary" data-book href="#"><span class="label">Book a free call →</span></a></div></div>
+    <div class="d-cta"><h4>Got something to make?<br>Let's talk.</h4><div class="ctas" style="margin:0"><a class="btn primary" data-book href="#"><span class="label">Say hello →</span></a></div></div>
     <div class="d-next"><button data-next="${nk}">Next: ${OFFERS[nk].kicker} →</button></div>`;
   dBody.querySelector('[data-next]').onclick = () => goTo(nk);
   window.applyBook?.(dBody);
@@ -1233,15 +1184,15 @@ window.__open = k => openOffer(k);
 const lab = document.getElementById('lab'), table = document.getElementById('table'), ro = document.getElementById('ro'), roBody = document.getElementById('roBody'), deckLbl = document.getElementById('deckLbl'), engines = document.getElementById('engines');
 const RED = '#a8182b', INK = '#141310', STOCK = '#fbf8f1', GOLD = 'url(#pc-gold)', BLUE = '#1d3557';
 const CARDS = [
-  { r: 'A', s: 'spade', art: 'ace', name: 'The Clone', what: 'Your face and voice on a month of videos, while you close a round from a plane.', ai: 'Renders the video from an approved script, in your face and voice.', you: 'Write or approve every word. Every clone video is labelled as one.', tag: 'Film once, show up all month' },
-  { r: 'K', s: 'diamond', art: 'king', name: 'The Strategist', what: 'The competitor teardown a junior team needs a fortnight for.', ai: 'Reads 90 to 120 days of your category and three rival founders, and scores hooks, consistency and gaps.', you: 'I pick the angle that only you can own.', tag: 'Weeks of research in one afternoon' },
-  { r: 'Q', s: 'heart', art: 'queen', name: 'The Voice', what: 'One voice memo becomes a month of posts that sound like you, not a LinkedIn bro.', ai: 'Turns a 60-minute memo into a story bank and drafts posts in your voice.', you: 'You edit. Nothing ships in a voice you would not use.', tag: '60 minutes in, a month out' },
-  { r: 'J', s: 'club', art: 'jack', name: 'The Editor', what: 'Long-form in, short clips out, before the coffee goes cold.', ai: 'Finds the moments worth clipping, cuts, captions and drafts thumbnails.', you: 'Taste. A human makes the final cut on every clip.', tag: 'Clips the same week you record' },
-  { r: '10', s: 'spade', art: 'pips', name: 'The List', what: 'Outbound that knows exactly which founder it is talking to.', ai: 'Enriches leads across 150+ data sources, scores fit and drafts a personal gap report.', you: 'Record the short video and press send. Replies are always human.', tag: 'Thousands of leads, sorted by fit' },
-  { r: '9', s: 'diamond', art: 'pips', name: 'The Booker', what: 'Your dream customer shows up to your podcast feeling understood.', ai: "Builds a prep pack and questions from each guest's own work.", you: 'The conversation. That part is never automated.', tag: 'Guest prep in minutes, not evenings' },
-  { r: '8', s: 'heart', art: 'pips', name: 'The Tester', what: 'More ad experiments from the same budget. Losers die fast.', ai: 'Spins variants of the hooks that already work and reads the numbers weekly.', you: 'I decide what scales and what gets killed.', tag: 'More tests, same spend' },
-  { r: '7', s: 'club', art: 'pips', name: 'The Clerk', what: 'The admin you were never going to do anyway.', ai: 'Schedules every account and assembles the one-page monthly report.', you: 'The 45-minute strategy call, where the real decisions happen.', tag: 'Admin on autopilot' },
-  { r: '', s: '', art: 'joker', name: 'House Rules', what: 'The wild card is taste. AI drafts; people decide.', ai: 'Never posts on its own and never pretends to be you without a label.', you: 'A human edit on everything before it leaves the building.', tag: 'Faster, never faceless' },
+  { r: 'A', s: 'spade', art: 'ace', name: 'The Founder', what: 'Co-founder of two startup agencies: Neweralist Media and Ascent Studio.', job: 'Scoping work, delivering it and keeping clients happy from the inside.', edge: 'I know what it takes to ship, because I am the one shipping.', tag: 'Co-founder ×2' },
+  { r: 'K', s: 'diamond', art: 'king', name: 'The Editor', what: 'Raw footage in, a story out.', job: 'Pacing, sound, captions and the cut that keeps people watching.', edge: 'A sharp opening and a clean ending, every time.', tag: 'Hook first, always' },
+  { r: 'Q', s: 'heart', art: 'queen', name: 'The Animator', what: 'Motion that explains an idea and makes it stick.', job: 'Kinetic type, animated graphics, titles and transitions.', edge: 'Motion with a purpose, never just decoration.', tag: 'Everything moves for a reason' },
+  { r: 'J', s: 'club', art: 'jack', name: 'The Developer', what: 'Sites that load fast and feel good to use.', job: 'Hand-built, responsive front ends, with interactive touches where they help.', edge: 'Design and code from one head, so nothing gets lost.', tag: 'Designed and built by one person' },
+  { r: '10', s: 'spade', art: 'pips', name: 'The Defender', what: 'A mind that keeps asking how it could break.', job: 'Thinking through attacks, testing and hardening what gets built.', edge: 'Security as a habit, not an afterthought.', tag: 'Curious by default' },
+  { r: '9', s: 'diamond', art: 'pips', name: 'The Storyteller', what: 'Video, motion and web telling one story.', job: 'Keeping the tone consistent across the film, the animation and the site.', edge: 'Nothing feels stitched together.', tag: 'One story, every format' },
+  { r: '8', s: 'heart', art: 'pips', name: 'The Learner', what: 'New tool? Give me a weekend.', job: 'Picking up whatever a project needs and learning it properly.', edge: 'Range is a feature, not a lack of focus.', tag: 'Always picking something up' },
+  { r: '7', s: 'club', art: 'pips', name: 'The Finisher', what: 'From the first brief to a live launch.', job: 'Owning the whole job, so nothing falls between people.', edge: 'One owner means no dropped hand-offs.', tag: 'Idea to launch' },
+  { r: '', s: '', art: 'joker', name: 'The Wild Card', what: 'The trick no single specialist has: all of it, together.', job: 'Pulling in the right skill at the right moment.', edge: 'A little of everything, and a lot of it good.', tag: 'Jack of all trades' },
 ];
 const isRed = s => s === 'heart' || s === 'diamond';
 
@@ -1279,7 +1230,7 @@ const DEFS = `<defs>
     <ellipse cx="125" cy="175" rx="66" ry="92" fill="#7d151a" stroke="#f3e5cc" stroke-width="1.4"/><ellipse cx="125" cy="175" rx="61" ry="87" fill="none" stroke="#f3e5cc" stroke-width=".45"/>
     ${[[34, 4, 16, .55], [30, 5, 22, .4], [40, 4, 12, .35], [26, 2, 30, .3]].map(([R, r, d, w]) => `<path d="${guilloche(125, 175, R * 1.45, r * 1.45, d * 1.45)}" fill="none" stroke="#f3e5cc" stroke-width="${w}" transform="translate(125 175) scale(1 1.32) translate(-125 -175)"/>`).join('')}
     <circle cx="125" cy="175" r="26" fill="#7d151a" stroke="#f3e5cc" stroke-width="1.1"/><circle cx="125" cy="175" r="22.5" fill="none" stroke="#f3e5cc" stroke-width=".35"/>
-    <text x="125" y="183.5" text-anchor="middle" font-size="23" fill="#f3e5cc" style="font-family:Georgia,'Times New Roman',serif;font-style:italic;letter-spacing:-1px">YY</text>
+    <text x="125" y="183.5" text-anchor="middle" font-size="23" fill="#f3e5cc" style="font-family:Georgia,'Times New Roman',serif;font-style:italic;letter-spacing:-1px">Y</text>
     ${[[125, 52, 0], [125, 298, 180]].map(([x, y, a]) => `<g transform="rotate(${a} ${x} ${y})"><path d="${guilloche(x, y, 9, 3, 7)}" fill="none" stroke="#f3e5cc" stroke-width=".45"/><circle cx="${x}" cy="${y}" r="5" fill="#7d151a" stroke="#f3e5cc" stroke-width=".7"/><use href="#s-spade" x="${x - 3.5}" y="${y - 3.5}" width="7" height="7" fill="#f3e5cc"/></g>`).join('')}
     ${[[30, 30, 0], [220, 30, 90], [220, 320, 180], [30, 320, 270]].map(([x, y, a]) => `<g transform="rotate(${a} ${x} ${y})" fill="none" stroke="#f3e5cc"><path d="M${x - 4} ${y + 22}C${x - 4} ${y + 6} ${x + 6} ${y - 4} ${x + 22} ${y - 4}" stroke-width=".8"/><path d="M${x + 2} ${y + 16}C${x + 2} ${y + 8} ${x + 8} ${y + 2} ${x + 16} ${y + 2}" stroke-width=".5"/><circle cx="${x + 3}" cy="${y + 3}" r="2.2" fill="#f3e5cc" stroke="none"/></g>`).join('')}
   </symbol>
@@ -1344,8 +1295,8 @@ function art(c) {
       <use href="#s-spade" x="57" y="96" width="136" height="136" fill="#151310"/>
       <use href="#s-spade" x="83" y="122" width="84" height="84" fill="none" stroke="#fbf8f0" stroke-width="1.2"/><use href="#s-spade" x="91" y="130" width="68" height="68" fill="none" stroke="#fbf8f0" stroke-width=".5" stroke-dasharray="1.5 2"/>
       <path d="${guilloche(125, 158, 9, 2.5, 8)}" fill="none" stroke="#d4a548" stroke-width=".7"/><circle cx="125" cy="158" r="5" fill="#b01e22" stroke="#fbf8f0" stroke-width=".8"/>
-      <path d="M78 262h94" stroke="#151310" stroke-width=".6"/><text x="125" y="276" text-anchor="middle" font-size="8" letter-spacing="3.2" fill="#151310" style="${SERIF}">YOHITH YADAV</text>
-      <text x="125" y="287" text-anchor="middle" font-size="5.6" letter-spacing="2.6" fill="#151310" opacity=".6" style="${SERIF}">FOUNDER-LED GROWTH · No. 001</text><path d="M78 293h94" stroke="#151310" stroke-width=".6"/></svg>`;
+      <path d="M78 262h94" stroke="#151310" stroke-width=".6"/><text x="125" y="276" text-anchor="middle" font-size="8" letter-spacing="3.2" fill="#151310" style="${SERIF}">YASHWANTH</text>
+      <text x="125" y="287" text-anchor="middle" font-size="5.6" letter-spacing="2.6" fill="#151310" opacity=".6" style="${SERIF}">JACK OF ALL TRADES · No. 001</text><path d="M78 293h94" stroke="#151310" stroke-width=".6"/></svg>`;
   }
   if (c.art === 'joker') {
     const col = (ch, i) => `<text x="17" y="${34 + i * 15}" text-anchor="middle" font-size="14" font-weight="700" fill="${i % 2 ? '#151310' : '#b01e22'}" style="${SERIF}">${ch}</text>`;
@@ -1367,9 +1318,9 @@ function art(c) {
 const idx = c => c.r ? `${c.r}${{ spade: '♠', heart: '♥', diamond: '♦', club: '♣' }[c.s]}` : '★';
 const els = CARDS.map((c, i) => {
   const d = document.createElement('div'); d.className = 'pc'; d.tabIndex = 0; d.style.setProperty('--k', i);
-  d.setAttribute('aria-label', `${c.name}: ${c.what} AI does: ${c.ai} Human does: ${c.you}`);
+  d.setAttribute('aria-label', `${c.name}: ${c.what} On the job: ${c.job} Why it helps: ${c.edge}`);
   d.innerHTML = `<i class="pc-sh"></i><div class="pc-in"><div class="pc-face pc-front">${art(c)}<i class="pc-gl"></i><i class="pc-foil"></i></div><div class="pc-face pc-back"><svg viewBox="0 0 250 350" aria-hidden="true"><use href="#pc-backart" width="250" height="350"/></svg><i class="pc-gl"></i></div></div>
-    <div class="pc-txt"><b>${c.name}</b><p>${c.what}<span><em>AI does:</em> ${c.ai}</span><span><em>You do:</em> ${c.you}</span></p><div class="t">⚡ ${c.tag}</div></div>`;
+    <div class="pc-txt"><b>${c.name}</b><p>${c.what}<span><em>On the job:</em> ${c.job}</span><span><em>Why it helps:</em> ${c.edge}</span></p><div class="t">⚡ ${c.tag}</div></div>`;
   table.appendChild(d); return d;
 });
 document.querySelectorAll('.pc svg text').forEach(t => { if (!t.style.fontFamily) t.style.fontFamily = 'var(--sf)'; });
@@ -1379,8 +1330,8 @@ let shown = -2;
 function showCard(i) {
   if (i === shown) return; shown = i; ro.classList.add('swap');
   setTimeout(() => {
-    if (i < 0) roBody.innerHTML = `<p class="ro-intro"><b>Nine cards, one deck.</b><br>Keep scrolling. Each card is a job a junior used to do in a week, now done in minutes, plus the part a human still owns.</p>`;
-    else { const c = CARDS[i]; roBody.innerHTML = `<div class="ro-top"><span class="ro-idx${isRed(c.s) ? ' red' : ''}">${idx(c)}</span><span class="ro-name">${c.name}</span><span class="ro-count">${i + 1} of 9</span></div><p class="ro-what">${c.what}</p><div class="ro-split"><div><small>AI does</small><p>${c.ai}</p></div><div><small>You do</small><p>${c.you}</p></div></div><div class="ro-tag">${c.tag}</div>`; }
+    if (i < 0) roBody.innerHTML = `<p class="ro-intro"><b>Nine cards, one deck.</b><br>Keep scrolling. Each card is something I bring to a project, and what it is good for.</p>`;
+    else { const c = CARDS[i]; roBody.innerHTML = `<div class="ro-top"><span class="ro-idx${isRed(c.s) ? ' red' : ''}">${idx(c)}</span><span class="ro-name">${c.name}</span><span class="ro-count">${i + 1} of 9</span></div><p class="ro-what">${c.what}</p><div class="ro-split"><div><small>On the job</small><p>${c.job}</p></div><div><small>Why it helps</small><p>${c.edge}</p></div></div><div class="ro-tag">${c.tag}</div>`; }
     ro.classList.remove('swap');
   }, 180);
 }
@@ -1510,105 +1461,85 @@ window.__lab = { get cur() { return cur; }, get L() { return L; }, get hover() {
    ========================================================= */
 {
 const labPin = document.querySelector('.lab-pin');
-const SAMPLE = true; // flip to false once real client cases replace these
-const BOOK_URL = '#'; // ← paste your booking link (Calendly, Cal.com…) here and every "Book a free call" uses it
-const REEL_SRC = ''; // ← optional: a showreel video URL (mp4). Empty = the built-in reel of case mock-ups
-const applyBook = (root = document) => root.querySelectorAll('[data-book]').forEach(a => { a.href = BOOK_URL; if (BOOK_URL !== '#') { a.target = '_blank'; a.rel = 'noopener'; } else a.addEventListener('click', e => e.preventDefault()); });
+const SAMPLE = false; // set true to show "Sample project" badges and a note on placeholder cards
+const BOOK_URL = MAIL ? `mailto:${MAIL}?subject=${encodeURIComponent('Hello from your portfolio')}` : '#'; // every "Let's talk" button uses this: set MAIL (top of file) or paste a booking link here
+const applyBook = (root = document) => root.querySelectorAll('[data-book]').forEach(a => { a.href = BOOK_URL; if (/^https?:/.test(BOOK_URL)) { a.target = '_blank'; a.rel = 'noopener'; } else if (BOOK_URL === '#') a.addEventListener('click', e => { e.preventDefault(); window.__marty?.say('He has not added his email yet. Check back soon.', 4200); }); });
 const CASES = [
-  { k: 'ledgerline', name: 'Ledgerline', sector: 'Fintech AI · Series A', engine: 'People-Led Content', year: 2026, pc: '#ff4500', tags: ['Founder videos', 'Team skits', 'LinkedIn + X'],
-    res: 'The founder and two teammates now post every week. The company page stopped doing the heavy lifting.',
-    sum: 'A finance AI with a brilliant product and a founder nobody outside the building had heard of. We turned three of their people into the most recognisable voices in their category.',
-    stats: [['4.2', 'M', 'impressions across the team in the first 90 days'], ['31', '', 'inbound demo requests that mentioned a post'], ['6', ' hrs', 'founder time a month, all in'],],
-    brief: ["Ledgerline sold to CFOs, a crowd that ignores ads and trusts people. Their LinkedIn page had 4,000 followers and the reach of a whisper.", 'The ask: make the founder visible without turning him into a full-time creator.'],
-    did: ['One shoot week on site: founder videos, two recurring skits and a B-roll library.', 'Voice capture and an AI clone for weeks the founder was travelling.', 'Five posts a week per person on LinkedIn and X, approved in one 30-minute session.', 'A monthly one-page report: buyer reach, engaged accounts, next month.'] },
-  { k: 'kiln', name: 'Kiln', sector: 'Developer tools · Seed', engine: 'Podcast Engine', year: 2026, pc: '#3b2335', tags: ['Video podcast', 'Guest booking', 'Clips'],
-    res: 'A podcast whose guest list was their target-account list. Every episode was a warm sales conversation.',
-    sum: 'Kiln needed meetings with heads of platform at companies that never answer cold email. So we gave those people a microphone instead.',
-    stats: [['16', '', 'target-account guests recorded in four months'], ['5', '', 'guests who became pipeline'], ['~5', ' hrs', 'founder time a month']],
-    brief: ['Seed-stage, two founders, and a buyer persona that guards their inbox like a vault.', 'The ask: a reason for senior engineers to spend an hour with the founder that did not feel like a pitch.'],
-    did: ['Show concept, name, cover art and trailer in three weeks.', 'Guests booked straight from the target list, each with a prep pack.', 'Four episodes a month, cut into about 22 clips.', 'A highlight clip for every guest, plus a follow-up script for the founder.'] },
-  { k: 'northstack', name: 'Northstack', sector: 'Data infrastructure · Series B', engine: 'Revenue Engine', year: 2025, pc: '#c9d6b8', tags: ['Video outbound', 'AI research', 'Booked meetings'],
-    res: 'Outbound with a face. Short personal videos did what forty templated emails could not.',
-    sum: 'Northstack had an SDR team, a sequence tool and a reply rate to match. We rebuilt outbound around who to talk to and a 40-second video from the founder.',
-    stats: [['11', '', 'held, qualified meetings in month three'], ['$400', '', 'per closed customer, paid only when they sign'], ['24', 'h', 'reply rule the client kept']],
-    brief: ['Plenty of activity, very little that turned into a calendar invite.', 'The ask: fewer, better meetings, with someone accountable for every one.'],
-    did: ['A written definition of "qualified" before a single email went out.', '500 ideal accounts a quarter, enriched and scored.', 'Video-led sequences recorded in one weekly batch.', 'Warm signals from content and ads jumped the queue.'] },
-  { k: 'parcel', name: 'Parcel AI', sector: 'Logistics AI · Series A', engine: 'Paid Video Engine', year: 2025, pc: '#3245ff', tags: ['Video ads', 'Thought Leader Ads', 'Retargeting'],
-    res: 'Their best organic videos became ads. The worst ads quietly stopped getting money.',
-    sum: 'Parcel was spending on polished brand ads nobody finished watching. We cut their best organic moments into ads and let the numbers pick the winners.',
-    stats: [['−38', '%', 'cost per demo against their baseline by day 60'], ['10', '', 'new video ads tested every month'], ['3', '', 'winning hooks scaled into always-on']],
-    brief: ['A healthy ad budget and a cost per demo heading the wrong way.', 'The ask: beat the baseline, or stop paying for management until we did.'],
-    did: ['Ten new video ads a month, cut from founder clips and customer proof.', 'Thought Leader Ads boosting the team’s best posts to target titles.', 'Retargeting everyone who watched, visited or sat on the target list.', 'Weekly read-outs; losers paused the same day.'] },
-  { k: 'overcast', name: 'Overcast Labs', sector: 'Climate SaaS · Series B', engine: 'The Full 360', year: 2026, pc: '#e9e2d3', tags: ['All four engines', 'One report'],
-    res: 'Content, podcast, outbound and paid under one roof, with one person to call when something matters.',
-    sum: 'Overcast had four vendors, four reports and nobody joining the dots. We replaced the lot with one partner and one monthly page.',
-    stats: [['4', '', 'engines running from one plan'], ['1', '', 'person accountable for all of it'], ['70', '%', 'below their build-it-yourself cost']],
-    brief: ['A Series B marketing stack held together by status calls.', 'The ask: the output of a full department, without hiring one.'],
-    did: ['People-led content for the founder and the head of sales.', 'A podcast whose guests were the top 40 target accounts.', 'Outbound that followed up on everyone who engaged.', 'Paid video pouring budget on whatever was already working.'] },
+  { k: 'yt1', name: 'Change How You Do Content', sector: 'YouTube', credit: 'Channel: Somrat Dutta', engine: 'Video Editing · Motion Graphics', pc: '#ff4500', tags: ['Video editing', 'Motion graphics', 'YouTube'],
+    res: 'A long-form YouTube video from the agency I co-founded.',
+    sum: 'A team project from the agency I co-founded: video editing and motion graphics on a long-form YouTube video. Full title: “Give me 9.28 Min, I’ll Completely CHANGE how you do CONTENT forever!”',
+    video: { type: 'youtube', id: 'kMJduBqtMRs', url: 'https://www.youtube.com/watch?v=kMJduBqtMRs' }, stats: [], brief: [], did: [] },
+  { k: 'ig1', name: 'Reel 01', sector: 'Instagram Reel', credit: 'Account: zeeljain', engine: 'Video Editing · Motion Graphics', pc: '#3b2335', tags: ['Video editing', 'Motion graphics', 'Reel'],
+    res: 'A short-form vertical video from the agency I co-founded.',
+    sum: 'A team project from the agency I co-founded: video editing and motion graphics on a short-form reel.',
+    video: { type: 'reel', src: 'assets/work/reel-01.mp4', url: 'https://www.instagram.com/reel/DbSMgbNqXLY/', account: 'zeeljain', caption: 'Video editing and motion graphics by our team.' }, stats: [], brief: [], did: [] },
+  { k: 'ig2', name: 'Reel 02', sector: 'Instagram Reel', credit: 'Account: zeeljain', engine: 'Video Editing · Motion Graphics', pc: '#8a6a3f', tags: ['Video editing', 'Motion graphics', 'Reel'],
+    res: 'A short-form vertical video from the agency I co-founded.',
+    sum: 'A team project from the agency I co-founded: video editing and motion graphics on a short-form reel.',
+    video: { type: 'reel', src: 'assets/work/reel-02.mp4', url: 'https://www.instagram.com/reel/DbCZGJqxty3/', account: 'zeeljain', caption: 'Video editing and motion graphics by our team.' }, stats: [], brief: [], did: [] },
+  { k: 'yt2', name: 'Zero to ₹5L/Month in Editing', sector: 'YouTube', credit: 'Channel: Somrat Dutta', engine: 'Video Editing · Motion Graphics', pc: '#3245ff', tags: ['Video editing', 'Motion graphics', 'YouTube'],
+    res: 'A long-form YouTube video from the agency I co-founded.',
+    sum: 'A team project from the agency I co-founded: video editing and motion graphics on a long-form YouTube video. Full title: “The ONLY Guide from ZERO to ₹5L/Month in Editing you need to watch”',
+    video: { type: 'youtube', id: 'hZe9fHhkaO8', url: 'https://www.youtube.com/watch?v=hZe9fHhkaO8' }, stats: [], brief: [], did: [] },
+  { k: 'nws', name: 'Neweralist Media Website', sector: 'Live site', engine: 'Web Design & Development', pc: '#0f1620', tags: ['Web development', 'Front-end', 'Live site'],
+    res: 'The website for the B2B media house I co-founded: services, case studies, process and FAQs on a single page.',
+    sum: 'The website for Neweralist Media, the B2B media house I co-founded. I designed and built it. One page carries the services, case studies, process, FAQs and contact, plus a careers modal.',
+    shot: { img: 'assets/work/neweralist.jpg', url: 'https://www.neweralistmedia.com/' }, stats: [], brief: [], did: [] },
+  { k: 'deep', name: 'Deep Impact', sector: 'Client project · in progress', badge: 'In progress', engine: 'Web Design', pc: '#101214', tags: ['In progress', 'Web design', 'Hero'],
+    res: 'A bold hero for a protein brand: oversized type behind the product bags. A client project that is still in progress.',
+    sum: 'I designed this website for Deep Impact, a protein and wellness brand and a new client. The work is still in progress, so this is a preview of the hero: oversized type behind the product bags, a simple menu (Protein, Wellness, Stacks, The Backroom), a cart and a shop button. The final site will replace it.',
+    shot: { img: 'assets/work/deep-impact.jpg', url: 'https://chipper-cactus-0c87fd.netlify.app/', embed: true, label: 'Open the preview ↗' }, stats: [], brief: [], did: [] },
+  { k: 'raja', name: 'Raja Harsha Portfolio', sector: 'Live site', engine: 'Web Design', pc: '#e9efe2', tags: ['Web design', 'Portfolio', 'Typography'],
+    res: 'A portfolio built around oversized italic type, a pixel-art card and a “portfolio mode” switch.',
+    sum: 'I designed this portfolio website for Raja Harsha: giant italic type, a pixel-art card, a full-screen menu and a “portfolio mode” switch in the footer. The pixel art is credited to Raja on the page.',
+    shot: { img: 'assets/work/raja-harsha.jpg', url: 'https://www.rajaharsha.com/', embed: true }, stats: [], brief: [], did: [] },
 ];
 
-const mock = (k, v = 'a') => {
-  if (k === 'ledgerline') {
-    const ph = (c, cap, who) => `<div class="ph" style="--sc:${c}"><i><span class="face"></span><span class="ui"><b></b><b></b><b></b></span><span class="cap">${cap}</span><span class="who">${who}</span></i></div>`;
-    if (v === 'b') return `<div class="mk mk-content">${ph('linear-gradient(170deg,#3a2a20,#0e0b09)', 'Why our CFO <em>said no</em> to our biggest customer', 'Founder · Ledgerline')}</div>`;
-    return `<div class="mk mk-content">${ph('linear-gradient(170deg,#2b3a44,#0b1114)', 'Sales rep vs. <em>the objection</em>', 'Sales lead')}${ph('linear-gradient(170deg,#3a2a20,#0e0b09)', 'We almost <em>ran out of runway.</em> Here’s what changed.', 'Founder · Ledgerline')}${ph('linear-gradient(170deg,#24302a,#0a0f0c)', 'How it’s <em>built</em> vs. how it’s sold', 'Engineering')}</div>`;
-  }
-  if (k === 'kiln') {
-    const wv = Array.from({ length: 46 }, (_, i) => `<i class="${i < 19 ? 'p' : ''}" style="--h:${(22 + Math.abs(Math.sin(i * .6) * 60 + Math.sin(i * 1.9) * 18)).toFixed(0)}%"></i>`).join('');
-    const cover = `<div class="pod-cover" style="position:relative"><small>Episode 07 · The platform layer</small><b>Shipping<br>in<br>public</b><small>A Kiln podcast</small></div>`;
-    if (v === 'b') return `<div class="mk"><div class="pod" style="width:52%">${cover}</div></div>`;
-    return `<div class="mk"><div class="pod" style="grid-template-columns:1fr 1fr;align-items:end;width:82%">${cover}<div class="pod-play"><div class="row"><span>Now playing</span><span>23:14 / 51:02</span></div><div class="wv">${wv}</div><div class="row"><span>Head of Platform, guest</span><span>Ep 07</span></div></div></div></div>`;
-  }
-  if (k === 'northstack') {
-    const days = [['Mon', [['VP Data · intro', 0]]], ['Tue', [['Head of Platform', 1], ['CTO · demo', 0]]], ['Wed', [['Dir. Analytics', 0]]], ['Thu', [['VP Eng · demo', 0], ['CDO · intro', 1]]], ['Fri', [['Head of Data', 0]]]];
-    const mail = `<div class="mail"${v === 'b' ? ' style="position:static;width:48%"' : ''}><b>Re: the 40-second video</b>Saw the clip about your migration, that is exactly our mess. Tuesday works.<div class="vid"></div><b>Reply received · 2 min ago</b></div>`;
-    if (v === 'b') return `<div class="mk">${mail}</div>`;
-    return `<div class="mk"><div class="cal2" style="width:74%;margin:0 14% 6% 0"><div class="hd">Week 11 <span>7 held meetings</span></div><div class="g">${days.map(([d, ev]) => `<div class="d"><small>${d}</small>${ev.map(([t, b]) => `<div class="ev${b ? ' b' : ''}">${t}</div>`).join('')}</div>`).join('')}</div></div>${mail}</div>`;
-  }
-  if (k === 'parcel') {
-    const chart = `<div class="chartc"${v === 'b' ? ' style="position:static;width:56%"' : ''}>Cost per demo<svg viewBox="0 0 100 46"><path d="M2 8 L18 12 L32 9 L46 20 L60 25 L74 31 L88 36 L98 40" fill="none" stroke="#3245ff" stroke-width="2.4" stroke-linecap="round"/><path d="M2 8 H98" stroke="#0f1338" stroke-opacity=".3" stroke-dasharray="2 2"/></svg></div>`;
-    if (v === 'b') return `<div class="mk">${chart}</div>`;
-    return `<div class="mk mk-paid"><div class="adc"><div class="top"><span><b>Parcel AI</b>Promoted</span></div><div class="vid"><span>Your warehouse already knows. Ask it.</span></div><div class="cta"><span>parcel.ai</span><i>Book a demo</i></div></div>${chart}</div>`;
-  }
+// a reel is a dark card around its own MP4: account row, video, icon bar, caption (decorative icons, no Instagram branding)
+const RC_ICONS = '<svg viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-7.5-10A4.5 4.5 0 0 1 12 7.4a4.5 4.5 0 0 1 7.5 3.1c0 5.4-7.5 10-7.5 10z"/></svg><svg viewBox="0 0 24 24"><path d="M20 11.5a7.5 7.5 0 0 1-10.9 6.7L4.5 19.5l1.3-4.4A7.5 7.5 0 1 1 20 11.5z"/></svg><svg viewBox="0 0 24 24"><path d="M21 4 3 11l7 2.5L12.5 21 21 4zM10 13.5 21 4"/></svg><svg viewBox="0 0 24 24"><path d="M6 4h12v16l-6-4-6 4z"/></svg>';
+const RC_SOUND = '<span class="rc-sound" role="button" tabindex="0" aria-label="Unmute"><svg class="ico-off" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="m16 9 5 6m0-6-5 6"/></svg><svg class="ico-on" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/></svg></span>';
+const reelCard = (c, page) => { const v = c.video;
+  return `<div class="mk reel-card"><div class="rc-head"><i class="rc-av">${v.account[0].toUpperCase()}</i><div><b>${v.account}</b><small>Instagram Reel</small></div></div>
+    <div class="rc-media"><video class="rc-video" src="${import.meta.env.BASE_URL}${v.src}#t=0.001" muted loop playsinline preload="metadata" aria-label="${c.name}"${page ? ' controls autoplay' : ''}></video>${page ? '' : RC_SOUND}</div>
+    <div class="rc-bar" aria-hidden="true">${RC_ICONS}</div>
+    <p class="rc-cap"><b>Agency project</b> ${v.caption}</p></div>`; };
+// real work: a thumbnail for the cards and the "next project" banner; the project page gets a live player
+const videoMock = (c, live) => c.video.type === 'youtube'
+  ? `<div class="mk mk-video"><img class="vthumb" src="https://i.ytimg.com/vi/${c.video.id}/maxresdefault.jpg" onerror="this.onerror=null;this.src=this.src.replace('maxresdefault','hqdefault')" alt="" loading="lazy" draggable="false"><i class="vplay"></i></div>`
+  : live ? reelCard(c)
+  : `<div class="mk mk-video mk-ig"><span class="ig-chip">Instagram Reel</span><i class="vplay"></i></div>`;
+const embedHero = c => { const v = c.video, yt = v.type === 'youtube';
+  const player = yt
+    ? `<div class="cs-hero cs-embed" style="--pc:${c.pc}"><iframe src="https://www.youtube-nocookie.com/embed/${v.id}?rel=0&autoplay=1&mute=1&playsinline=1" title="${c.name}" allow="autoplay; accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe></div>`
+    : `<div class="cs-hero cs-reel" style="--pc:${c.pc}">${reelCard(c, true)}</div>`;
+  return `${player}<p class="cs-watch"><a class="btn ghost" href="${v.url}" target="_blank" rel="noopener"><span class="label">${yt ? 'Watch on YouTube' : 'View on Instagram'} ↗</span></a></p>`; };
+const shotMock = c => `<div class="mk mk-shot"><img class="vthumb" src="${import.meta.env.BASE_URL}${c.shot.img}" alt="" loading="lazy" draggable="false"></div>`;
+const shotHero = c => { const view = c.shot.embed ? `<iframe src="${c.shot.url}" title="${c.name}" loading="lazy" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>` : `<img src="${import.meta.env.BASE_URL}${c.shot.img}" alt="Screenshot of ${c.name}">`;
+  return `<div class="cs-hero cs-shot" style="--pc:${c.pc}">${view}</div><p class="cs-watch"><a class="btn ghost" href="${c.shot.url}" target="_blank" rel="noopener"><span class="label">${c.shot.label || 'Visit the live site ↗'}</span></a></p>`; };
+const caseMeta = c => [c.engine, c.sector, c.credit, c.year].filter(Boolean).join(' · ');
+const mock = (k, v = 'a', live = false) => {
+  const cv = CASES.find(c => c.k === k); if (cv && cv.video) return videoMock(cv, live);
+  if (cv && cv.shot) return shotMock(cv);
   const bars = [40, 52, 48, 61, 58, 70, 66, 78, 74, 86, 82, 94].map(h => `<i style="--h:${h}%"></i>`).join('');
-  if (v === 'b') return `<div class="mk"><div class="dash" style="width:62%;grid-template-columns:1fr"><div class="eng"><span>People-led content</span><span>Podcast</span><span>Revenue</span><span>Paid video</span></div></div></div>`;
-  return `<div class="mk"><div class="dash"><div class="k">ICP reach<b>2.8M<em>↑</em></b></div><div class="k">Engaged accounts<b>412<em>↑</em></b></div><div class="k">Held meetings<b>14<em>↑</em></b></div><div class="k">Cost per demo<b>−31%</b></div><div class="dbars">${bars}</div><div class="eng"><span>Content</span><span>Podcast</span><span>Revenue</span><span>Paid</span></div></div></div>`;
+  if (v === 'b') return `<div class="mk"><div class="dash" style="width:62%;grid-template-columns:1fr"><div class="eng"><span>Video editing</span><span>Motion graphics</span><span>Web development</span><span>Cyber security</span></div></div></div>`;
+  return `<div class="mk"><div class="dash"><div class="k">Crafts<b>4<em>↑</em></b></div><div class="k">Agencies<b>2<em>↑</em></b></div><div class="k">Owners<b>1</b></div><div class="k">Hand-offs<b>0</b></div><div class="dbars">${bars}</div><div class="eng"><span>Video</span><span>Motion</span><span>Web</span><span>Security</span></div></div></div>`;
 };
 
 // render cards
 const grid = document.getElementById('wkGrid');
 grid.innerHTML = CASES.map(c => `<article class="case" data-case="${c.k}" style="--pc:${c.pc}"><div class="rv-wrap">
-  <a class="cm" href="#case-${c.k}" aria-label="Open case study: ${c.name}"><div class="mock">${mock(c.k)}</div><span class="vc-chip" aria-hidden="true">View case ↗</span>${SAMPLE ? '<span class="smp">Sample case</span>' : ''}<span class="tags">${c.tags.map(t => `<span>${t}</span>`).join('')}</span></a>
-  <h3>${c.name}</h3><p class="meta"><b>${c.engine}</b> · ${c.sector} · ${c.year}</p><p class="res">${c.res}</p></div></article>`).join('');
-if (SAMPLE) document.getElementById('wkNote').textContent = 'Sample cases: names and figures are placeholders until real client work takes their place.';
+  <a class="cm" href="#case-${c.k}" aria-label="Open project: ${c.name}"><div class="mock">${mock(c.k, 'a', true)}</div><span class="vc-chip" aria-hidden="true">View case ↗</span>${c.badge ? `<span class="smp">${c.badge}</span>` : SAMPLE && !c.video ? '<span class="smp">Sample project</span>' : ''}<span class="tags">${c.tags.map(t => `<span>${t}</span>`).join('')}</span></a>
+  <h3>${c.name}</h3><p class="meta"><b>${c.engine}</b> · ${[c.sector, c.credit, c.year].filter(Boolean).join(' · ')}</p><p class="res">${c.res}</p></div></article>`).join('');
+if (SAMPLE) document.getElementById('wkNote').textContent = 'Cards marked “Sample project” are placeholders until real work takes their place.';
 
+// reels play muted while they are on screen (poster frame only with reduced motion); the speaker toggles sound
+{ const vids = [...grid.querySelectorAll('.rc-video')], calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  vids.forEach(v => { v.muted = true; });
+  if (!calm) { const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) e.target.play().catch(() => {}); else e.target.pause(); }), { threshold: .4 }); vids.forEach(v => io.observe(v)); }
+  grid.querySelectorAll('.rc-sound').forEach(b => { const v = b.closest('.rc-media').querySelector('video');
+    const toggle = e => { e.preventDefault(); e.stopPropagation(); v.muted = !v.muted; b.classList.toggle('unmuted', !v.muted); b.setAttribute('aria-label', v.muted ? 'Unmute' : 'Mute'); if (!v.muted) v.play().catch(() => {}); };
+    b.addEventListener('click', toggle); b.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') toggle(e); }); }); }
 applyBook(); window.applyBook = applyBook;
-// ---- showreel: the reel window grows from a small card to the full screen as you scroll
-{
-  const reel = document.getElementById('reel'), media = document.getElementById('reelMedia'), mq = document.getElementById('reelMq'), play = document.getElementById('reelPlay'), cap = document.getElementById('reelCap'), slides = document.getElementById('reelSlides');
-  if (REEL_SRC) slides.innerHTML = `<video src="${REEL_SRC}" autoplay muted loop playsinline></video>`;
-  else {
-    const ink = h => { const n = parseInt(h.slice(1), 16), l = .2126 * (n >> 16 & 255) + .7152 * (n >> 8 & 255) + .0722 * (n & 255); return l > 150 ? '#182113' : '#fff'; };
-    slides.innerHTML = CASES.map(c => `<div class="reel-slide" style="--pc:${c.pc};--rk:${ink(c.pc)}"><p class="reel-name"><b>${c.name}</b><span>${c.engine} · ${c.sector}</span></p><div class="mock">${mock(c.k)}</div></div>`).join('');
-    const sl = [...slides.children]; let i = 0; sl[0].classList.add('on');
-    setInterval(() => { if (!reelOn) return; sl[i].classList.remove('on'); i = (i + 1) % sl.length; sl[i].classList.add('on'); }, 1900);
-  }
-  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v)), eio = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
-  let reelOn = false, last = '';
-  function rf() {
-    if (!reelOn) return; requestAnimationFrame(rf);
-    const r = reel.getBoundingClientRect(), W = innerWidth, H = innerHeight;
-    const p = clamp(-r.top / (r.height - H)), e = eio(clamp((p - .04) / .72));
-    const w0 = Math.min(W * .32, 480), h0 = Math.min(w0 * .62, H * .4);
-    const w = w0 + (W - w0) * e, h = h0 + (H - h0) * e, rad = 18 * (1 - e);
-    const key = `${w.toFixed(1)}|${h.toFixed(1)}|${p.toFixed(3)}`; if (key === last) return; last = key;
-    media.style.clipPath = `inset(${((H - h) / 2).toFixed(1)}px ${((W - w) / 2).toFixed(1)}px round ${rad.toFixed(1)}px)`;
-    mq.style.opacity = (1 - e * 1.1).toFixed(3); mq.style.transform = `scale(${(1 + e * .25).toFixed(3)})`;
-    play.style.opacity = clamp(1 - e * 4).toFixed(3); cap.style.opacity = clamp((e - .75) * 4).toFixed(3);
-    // once the pin releases, the full-screen reel scrolls up with the page and the Work section rises in behind it
-  }
-  new IntersectionObserver(es => es.forEach(en => { const was = reelOn; reelOn = en.isIntersecting; if (reelOn && !was) requestAnimationFrame(rf); }), { rootMargin: '50% 0px 50% 0px' }).observe(reel);
-}
 // heading wipe + reveals
 const wkTitle = document.getElementById('wkTitle');
 document.fonts.ready.then(() => buildHighlight(wkTitle));
@@ -1616,13 +1547,27 @@ new IntersectionObserver((es, o) => es.forEach(e => { if (e.isIntersecting) { pl
 const cases = [...grid.children];
 const rio = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); rio.unobserve(e.target); } }), { rootMargin: '0px 0px -10% 0px' });
 cases.forEach(c => rio.observe(c));
+// YouTube cards play a muted, looping preview while on screen (Instagram embeds can't autoplay, so those stay still)
+if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  const live = new IntersectionObserver(es => es.forEach(e => {
+    const v = CASES.find(c => c.k === e.target.dataset.case)?.video; if (!v || v.type !== 'youtube') return;
+    const box = e.target.querySelector('.mk-video'), cur = box.querySelector('.vlive');
+    if (e.isIntersecting && !cur) {
+      const f = document.createElement('iframe'); f.className = 'vlive'; f.tabIndex = -1; f.setAttribute('aria-hidden', 'true'); f.allow = 'autoplay; encrypted-media';
+      f.src = `https://www.youtube-nocookie.com/embed/${v.id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${v.id}&playsinline=1&rel=0&modestbranding=1&disablekb=1&iv_load_policy=3`;
+      f.addEventListener('load', () => setTimeout(() => f.classList.add('on'), 900)); // fade in once playback is running, not the black loading frame
+      box.insertBefore(f, box.querySelector('.vplay'));
+    } else if (!e.isIntersecting && cur) cur.remove();
+  }), { threshold: .5 });
+  cases.forEach(c => live.observe(c));
+}
 
 // dot-matrix cursor trail on this black section too
 dotsFor(document.getElementById('wkDots'), document.getElementById('work'));
 
 // parallax drift + page-up cover over the AI Lab
 const work = document.getElementById('work');
-const SPD = [0, .1, -.05, .14, .04], wide = () => innerWidth > 900;
+const SPD = [0, .1, -.05, .14, .04, .08, -.04], wide = () => innerWidth > 900;
 let wkRun = false, lastC2 = '', wkSY = null;
 function wkFrame() {
   if (!wkRun) return; requestAnimationFrame(wkFrame);
@@ -1655,7 +1600,7 @@ grid.querySelectorAll('.cm').forEach(m => {
 
 
 /* =========================================================
-   PROCESS · "One idea in. Revenue out."
+   PROCESS · "One idea in. Live launch out."
    An LED dot-matrix. Each station is a shape drawn once offscreen and sampled into points;
    ~2,400 dots spring between them as you scroll. Cursor/finger pushes dots away, a click
    sends a shockwave, and every shape has its own idle life (waveform plays, iris turns,
@@ -1678,36 +1623,36 @@ grid.querySelectorAll('.cm').forEach(m => {
   const SPECIAL = '#00ff00'; // drawn cream, but tagged so its dots can move on their own (the radar sweep)
   const rr = (x, y, w, h, r) => { o.beginPath(); o.roundRect(x, y, w, h, r); };
   const DRAW = [
-    // 01 deposition: the founder interview, first chunk "played" in orange, with a playhead
+    // 01 brief: a conversation as a waveform, the first part "played" in orange, with a playhead
     () => { const n = 44, w = 7, gap = 5.2, x0 = (BW - n * (w + gap)) / 2;
       for (let i = 0; i < n; i++) { const h = 30 + Math.abs(Math.sin(i * .55) * 150 + Math.sin(i * 1.7) * 60 + Math.sin(i * .21) * 40);
         o.fillStyle = i < 17 ? ORANGE : CREAM; o.fillRect(x0 + i * (w + gap), BH / 2 - h / 2, w, h); }
       o.fillStyle = CREAM; o.fillRect(x0 + 17 * (w + gap) - 4, BH / 2 - 150, 3, 300); },
-    // 02 production: the camera iris
+    // 02 capture: the camera iris
     () => { const cx = BW / 2, cy = BH / 2, R = 220, r = 78; o.lineWidth = 12; o.strokeStyle = CREAM; o.beginPath(); o.arc(cx, cy, R, 0, 7); o.stroke(); o.lineWidth = 9;
       for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2, ax = cx + Math.cos(a) * r, ay = cy + Math.sin(a) * r, b = a + Math.PI / 2 - .25;
         o.beginPath(); o.moveTo(ax, ay); o.lineTo(ax + Math.cos(b) * 205, ay + Math.sin(b) * 205); o.stroke(); }
       o.fillStyle = ORANGE; o.beginPath(); o.arc(cx + 150, cy - 150, 14, 0, 7); o.fill(); },
-    // 03 podcast: a studio mic, orange grille, sound coming off it
+    // 03 sound: a studio mic, orange grille, sound coming off it
     () => { o.strokeStyle = CREAM; o.lineWidth = 9; rr(240, 50, 120, 210, 60); o.stroke();
       o.fillStyle = ORANGE; for (let y = 82; y < 236; y += 17) o.fillRect(262, y, 76, 6);
       o.lineWidth = 9; o.beginPath(); o.arc(300, 205, 98, 0, Math.PI); o.stroke();
       o.fillStyle = CREAM; o.fillRect(296, 303, 8, 120); o.fillRect(225, 421, 150, 9);
       o.lineWidth = 6; o.globalAlpha = .7; [150, 196].forEach(r => { o.beginPath(); o.arc(300, 155, r, -.55, .55); o.stroke(); o.beginPath(); o.arc(300, 155, r, Math.PI - .55, Math.PI + .55); o.stroke(); }); o.globalAlpha = 1; },
-    // 04 rollout: three feeds (you, sales lead, engineer), always scrolling
+    // 04 cut: three vertical videos, always scrolling
     () => { [-1, 0, 1].forEach(k => { const cx = BW / 2 + k * 178; o.strokeStyle = CREAM; o.lineWidth = 7; rr(cx - 64, 40, 128, 440, 24); o.stroke();
       o.fillStyle = ORANGE; o.beginPath(); o.arc(cx - 34, 84, 13, 0, 7); o.fill(); o.fillStyle = CREAM; o.fillRect(cx - 14, 79, 52, 9);
       o.globalAlpha = .8; for (let j = 0; j < 6; j++) { o.fillRect(cx - 46, 122 + j * 56, 92, 34); } o.globalAlpha = 1; }); },
-    // 05 outbound: radar. 500 accounts, a sweep, the warm ones light up
+    // 05 build: load time dropping, the latest builds in orange
+    () => { const H0 = [300, 278, 252, 220, 192, 160, 128, 100], bx = 92, bw = 36, gap = 20, base = 440;
+      H0.forEach((h, i) => { o.fillStyle = i > 5 ? ORANGE : CREAM; o.globalAlpha = i > 5 ? 1 : .85; o.fillRect(bx + i * (bw + gap), base - h, bw, h); });
+      o.globalAlpha = .6; o.fillStyle = CREAM; for (let x = 70; x < 540; x += 22) o.fillRect(x, base - 304, 12, 4); o.globalAlpha = 1; o.fillRect(70, base + 8, 470, 4); },
+    // 06 secure: radar. A sweep goes round and the suspicious ones light up
     () => { const cx = BW / 2, cy = BH / 2; o.strokeStyle = CREAM; o.lineWidth = 5; o.globalAlpha = .85; [75, 150, 225].forEach(r => { o.beginPath(); o.arc(cx, cy, r, 0, 7); o.stroke(); });
       o.lineWidth = 2; o.beginPath(); o.moveTo(cx - 230, cy); o.lineTo(cx + 230, cy); o.moveTo(cx, cy - 230); o.lineTo(cx, cy + 230); o.stroke(); o.globalAlpha = 1;
       for (let i = 0; i < 46; i++) { const a = i * 2.39996, r = 40 + ((i * 53) % 180); o.fillStyle = i % 6 === 2 ? ORANGE : CREAM; o.beginPath(); o.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r, i % 6 === 2 ? 8 : 5.5, 0, 7); o.fill(); }
       o.strokeStyle = SPECIAL; o.lineWidth = 7; o.beginPath(); o.moveTo(cx, cy); o.lineTo(cx + 222, cy); o.stroke(); },
-    // 06 paid: cost per demo dropping under the baseline, the latest months in orange
-    () => { const H0 = [300, 278, 252, 220, 192, 160, 128, 100], bx = 92, bw = 36, gap = 20, base = 440;
-      H0.forEach((h, i) => { o.fillStyle = i > 5 ? ORANGE : CREAM; o.globalAlpha = i > 5 ? 1 : .85; o.fillRect(bx + i * (bw + gap), base - h, bw, h); });
-      o.globalAlpha = .6; o.fillStyle = CREAM; for (let x = 70; x < 540; x += 22) o.fillRect(x, base - 304, 12, 4); o.globalAlpha = 1; o.fillRect(70, base + 8, 470, 4); },
-    // 07 close: the calendar. Meetings drop in one by one until the week is full
+    // 07 launch: the calendar. Tasks tick off one by one until the week is full
     () => { const x0 = 75, y0 = 70, cw = 90, ch = 92; for (let c = 0; c < 5; c++) for (let r = 0; r < 4; r++) { const x = x0 + c * cw, y = y0 + r * ch;
         o.globalAlpha = .45; o.strokeStyle = CREAM; o.lineWidth = 3; rr(x + 5, y + 5, cw - 10, ch - 10, 10); o.stroke();
         o.globalAlpha = 1; o.fillStyle = ORANGE; rr(x + 15, y + 15, cw - 30, ch - 30, 6); o.fill(); }
@@ -1741,9 +1686,9 @@ grid.querySelectorAll('.cm').forEach(m => {
   stage.addEventListener('pointerdown', e => pt(e.clientX, e.clientY), { passive: true });
   stage.addEventListener('pointerleave', () => { mx = my = 1e5; tnx = tny = 0; });
   addEventListener('pointerup', e => { if (e.pointerType === 'touch') { mx = my = 1e5; tnx = tny = 0; } }, { passive: true });
-  const QUIPS = [["Story #7 is off the record.", "That pause? Gold. We're keeping it."], ['Take 12. Marty, stop laughing.', 'Hook v7. v1–v6 are in witness protection.'],
-    ["Guest #4 is on your target list. Coincidence? No.", "Episode 7. Still not a 'quick sync'."], ['Your company page is jealous.', '+1 like. From your mum. Still counts.'],
-    ['Warm lead spotted. Jumping the queue.', "Never from your main domain. We're not animals."], ['Cost per demo, going down.', 'Losers get paused the same day. No sentiment.'], ['Moved to Thursday. Classic.', 'Told you.']];
+  const QUIPS = [["Listening. Actually listening.", "'Make it pop' is not a brief. He will ask."], ['Take 12. Marty, stop laughing.', 'Messy folder? Fine. He has seen worse.'],
+    ['That pause? Gold. Keeping it.', 'Silence is a sound effect too.'], ['Cut. Cut. Kill the darling.', 'Rough cut v3. v1 is in witness protection.'],
+    ['Page load: faster. Standards: higher.', 'No template soup. Only hand-made soup.'], ['Found a hole. Closed it. Nobody noticed.', 'Dependencies updated. You are welcome.'], ['Live. Everything. Together.', 'Told you it would ship.']];
   const FILL = [3, 11, 7, 16, 0, 9, 18, 5, 13, 1, 15, 8, 19, 4, 12, 2, 17, 6, 10, 14];
   let quipN = 0, sayT = 0, shock = null;
   stage.addEventListener('click', e => { const r = stage.getBoundingClientRect(); pt(e.clientX, e.clientY); shock = { x: mx, y: my, t: 0 };
@@ -1790,9 +1735,9 @@ grid.querySelectorAll('.cm').forEach(m => {
           else if (st === 1) { const r = Math.hypot(tx, ty); if (r < 200) { const a = Math.atan2(ty, tx) + T * .22; tx = Math.cos(a) * r; ty = Math.sin(a) * r; } }
           else if (st === 2) { if (!acc) { const r = Math.hypot(tx, ty + 105); if (r > 120 && Math.abs(tx) > 80) al *= .3 + .7 * Math.max(0, Math.sin(r * .06 - T * 5)); } }
           else if (st === 3) { const k3 = Math.round(tx / 178), cx = k3 * 178; if (Math.abs(tx - cx) < 50 && ty > -142 && ty < 186) { ty = -142 + (((ty + 142 - T * 34) % 328) + 328) % 328; if (ty > 176 || ty < -136) al *= .2; } }
-          else if (st === 4) { const sw = T * 1.3; if (acc === 2) { const r = Math.hypot(tx, ty); tx = Math.cos(sw) * r; ty = Math.sin(sw) * r; acc = 0; al = .95; }
+          else if (st === 5) { const sw = T * 1.3; if (acc === 2) { const r = Math.hypot(tx, ty); tx = Math.cos(sw) * r; ty = Math.sin(sw) * r; acc = 0; al = .95; }
             else { let dA = (sw - Math.atan2(ty, tx)) % 6.2832; if (dA < 0) dA += 6.2832; const lit = Math.exp(-dA * 1.6); al *= acc ? .4 + .6 * lit : .5 + .5 * lit; } }
-          else if (st === 5) { if (ty > -120) { const b = 180, k5 = .9 + .1 * Math.sin(T * 2 + tx * .03); ty = b - (b - ty) * k5; } }
+          else if (st === 4) { if (ty > -120) { const b = 180, k5 = .9 + .1 * Math.sin(T * 2 + tx * .03); ty = b - (b - ty) * k5; } }
           else if (st === 6) { if (acc === 1) { const c6 = Math.floor((tx + 225) / 90), r6 = Math.floor((ty + 190) / 92), idx = FILL[(r6 * 5 + c6 + 20) % 20], ph = (T % 9) / 9, n6 = Math.floor(clamp(ph / .7) * 20);
               if (idx >= n6) al = .06; else if (ph > .72 && ph < .8) al = 1; } }
         }
@@ -1816,7 +1761,7 @@ grid.querySelectorAll('.cm').forEach(m => {
   new IntersectionObserver(es => es.forEach(e => { const was = run; run = e.isIntersecting; if (run && !was) start(); }), { rootMargin: '15% 0px 15% 0px' }).observe(sec);
 
   // ---------- work → process: the idea ----------
-  // An orange dot leaves the "Book a free call" button at the end of Work, arcs across while Process rises,
+  // An orange dot leaves the "Let's talk" button at the end of Work, arcs across while Process rises,
   // and lands in the middle of the dot panel, where it becomes the dot cluster that bursts into station 01.
   if (!reduce) {
     const dot = document.createElement('i'); dot.className = 'idea'; dot.setAttribute('aria-hidden', 'true'); document.body.appendChild(dot);
@@ -1852,16 +1797,20 @@ const cs = document.getElementById('cs'), csBody = document.getElementById('csBo
 let csKey = null, csTimer = 0;
 function renderCase(k) {
   const i = CASES.findIndex(c => c.k === k), c = CASES[i], n = CASES[(i + 1) % CASES.length];
-  cs.style.setProperty('--pc', c.pc); document.getElementById('csCrumb').textContent = `Case ${i + 1} of ${CASES.length}`;
-  csBody.innerHTML = `<div class="cs-head"><h2 id="csTitle">${c.name}</h2><div><p>${c.sum}</p><div class="cs-tags">${c.tags.map(t => `<span>${t}</span>`).join('')}</div><div class="cs-meta">${c.engine} · ${c.sector} · ${c.year}</div></div></div>
+  cs.style.setProperty('--pc', c.pc); document.getElementById('csCrumb').textContent = `Project ${i + 1} of ${CASES.length}`;
+  csBody.innerHTML = `<div class="cs-head"><h2 id="csTitle">${c.name}</h2><div><p>${c.sum}</p><div class="cs-tags">${c.tags.map(t => `<span>${t}</span>`).join('')}</div><div class="cs-meta">${caseMeta(c)}</div></div></div>
     <div class="cs-hero" style="--pc:${c.pc}"><div class="mock">${mock(c.k)}</div></div>
     <div class="cs-stats">${c.stats.map(([b, u, s]) => `<div><b>${b}<em>${u}</em></b><span>${s}</span></div>`).join('')}</div>
-    ${SAMPLE ? '<p class="cs-note">Sample case: the company and the figures are placeholders until real client work replaces them.</p>' : ''}
+    ${SAMPLE ? '<p class="cs-note">Sample project: the details and figures are placeholders until real work replaces them.</p>' : ''}
     <div class="cs-sec"><h4>The brief</h4><div>${c.brief.map(p => `<p>${p}</p>`).join('')}</div></div>
-    <div class="cs-sec"><h4>What we ran</h4><div class="cs-steps">${c.did.map((d, j) => `<div><b>0${j + 1}</b><span>${d}</span></div>`).join('')}</div></div>
+    <div class="cs-sec"><h4>What I did</h4><div class="cs-steps">${c.did.map((d, j) => `<div><b>0${j + 1}</b><span>${d}</span></div>`).join('')}</div></div>
     <div class="cs-gal"><div style="--pc:${c.pc}"><div class="mock">${mock(c.k, 'b')}</div></div><div style="--pc:${c.pc}"><div class="mock">${mock(c.k)}</div></div></div>
-    <div class="wk-cta cs-cta"><h3>Want this for your company?</h3><div><p>Thirty minutes, no pitch deck. Just your situation and what I would do about it.</p><a class="btn primary" data-book href="#"><span class="label">Book a free call →</span></a></div></div>
-    <button class="cs-next" data-next="${n.k}" style="--pc:${n.pc}"><div class="mock">${mock(n.k)}</div><div class="nx"><small>Next case</small><h3>${n.name} <i>→</i></h3><div class="cs-tags" style="margin-top:18px">${n.tags.map(t => `<span>${t}</span>`).join('')}</div></div></button>`;
+    <div class="wk-cta cs-cta"><h3>Want something like this?</h3><div><p>Tell me what you are making. No pitch deck, just a conversation.</p><a class="btn primary" data-book href="#"><span class="label">Let's talk →</span></a></div></div>
+    <button class="cs-next" data-next="${n.k}" style="--pc:${n.pc}"><div class="mock">${mock(n.k)}</div><div class="nx"><small>Next project</small><h3>${n.name} <i>→</i></h3><div class="cs-tags" style="margin-top:18px">${n.tags.map(t => `<span>${t}</span>`).join('')}</div></div></button>`;
+  if (c.video || c.shot) { // real work: player or screenshot instead of the placeholder mock-up, brief and stats
+    csBody.querySelector('.cs-hero').outerHTML = c.video ? embedHero(c) : shotHero(c);
+    csBody.querySelectorAll('.cs-stats, .cs-note, .cs-sec, .cs-gal').forEach(n => n.remove());
+  }
   applyBook(csBody);
   csBody.querySelector('[data-next]').onclick = () => { cs.scrollTo({ top: 0 }); renderCase(n.k); history.replaceState(null, '', '#case-' + n.k); csKey = n.k; cs.classList.remove('open'); cs.style.transition = 'none'; cs.style.clipPath = 'none'; cs.offsetWidth; requestAnimationFrame(() => { cs.classList.add('open'); cs.style.transition = ''; cs.style.clipPath = ''; }); };
 }
@@ -1876,7 +1825,7 @@ function openCase(k, push = true) {
 }
 function closeCase(pop = false) {
   if (!csKey) return; const m = grid.querySelector(`[data-case="${csKey}"] .cm`); m.scrollIntoView({ block: 'center', behavior: 'instant' }); clipFrom(m);
-  cs.classList.add('closing'); cs.classList.remove('open'); csKey = null;
+  cs.classList.add('closing'); cs.classList.remove('open'); csKey = null; csBody.querySelectorAll('iframe, video').forEach(n => n.remove());
   setTimeout(() => { if (!csKey) { cs.classList.remove('closing'); document.documentElement.style.overflow = ''; } }, 850);
   if (!pop && location.hash.startsWith('#case-')) history.back();
 }
@@ -1892,12 +1841,12 @@ window.__case = k => openCase(k);
    RESULTS · three numbers that roll like an odometer as you scroll (pinned, fully scrubbed both ways)
    ========================================================= */
 {
-  const RESULTS = [ // ← placeholders: swap in the real numbers (v = the number, suf = what follows it)
-    { v: 340, suf: '+', label: 'Pre-sold calls booked', sub: 'Sales calls where they already knew the founder.', say: '340 calls where they already knew his name. Cheat code.' },
-    { v: 8, suf: 'h', label: 'Of your time a month', sub: 'What founders spend on all four engines. Total.', say: 'Eight hours a month. Less than your Slack time.' },
-    { v: 92, suf: '%', label: 'Renew after month three', sub: 'Once the engine is running, they stay.', say: '92% stayed. When it pays, they stay.' },
+  const RESULTS = [ // v = the number, suf = what follows it
+    { v: 4, suf: '', label: 'Crafts, one person', sub: 'Video editing, motion graphics, web development and cyber security.', say: 'Four skills. One guy. Same coffee.' },
+    { v: 2, suf: '', label: 'Startup agencies co-founded', sub: 'Built and run alongside my co-founders.', say: 'Two agencies. Zero days off. Allegedly.' },
+    { v: 1, suf: '', label: 'Person to talk to', sub: 'No account managers, no hand-offs. Just me.', say: 'One person. No middlemen.' },
   ];
-  const RESULTS_SAMPLE = true; // ← false once the numbers are real
+  const RESULTS_SAMPLE = false;
   const START = .06, STEP = .29, LEN = .25; // scroll fraction where each number starts counting, and how long it takes
   const sec = document.getElementById('results'), pin = document.getElementById('resPin'), row = document.getElementById('resRow'), note = document.getElementById('resNote');
   const strip = `<i>${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(n => `<b>${n}</b>`).join('')}</i>`;
@@ -1951,7 +1900,7 @@ window.__case = k => openCase(k);
 }
 
 /* =========================================================
-   THE HUMAN · Meet Yohith. A pile of polaroids that lands one by one; click the top one to shuffle,
+   THE HUMAN · Meet Yashwanth. A pile of polaroids that lands one by one; click the top one to shuffle,
    drag it to toss it across the room (it comes back to the bottom of the pile).
    ========================================================= */
 {
@@ -2009,10 +1958,9 @@ window.__case = k => openCase(k);
    front door, and a hand of cards is dealt onto the page for you to throw around.
    ========================================================= */
 {
-  const MAIL = ''; // ← your email address, e.g. 'hello@yourdomain.com' (every "Say hello", "Email me" and the careers card use it)
   document.querySelectorAll('[data-mail]').forEach(a => {
     if (MAIL) a.href = `mailto:${MAIL}?subject=${encodeURIComponent(a.dataset.mail)}`;
-    else a.addEventListener('click', e => { e.preventDefault(); window.__marty?.say('He forgot to add his email. Classic. Book the call instead.', 4200); });
+    else a.addEventListener('click', e => { e.preventDefault(); window.__marty?.say('He has not added his email yet. Check back soon.', 4200); });
   });
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
   const sec = document.getElementById('contact'), topEl = sec.querySelector('.ct-top'), ring = document.getElementById('ctRing'), hov = sec.querySelector('.ct-hover');
@@ -2170,8 +2118,8 @@ window.__case = k => openCase(k);
    MARTY, PAGE HOST
    The same Marty (same build, same rig, same cigarette) stands on the loader, leaves his room and keeps
    you company down the page from a small transparent canvas that follows him (cheap: it never covers
-   the whole screen). He only moves when it means something: onto the engines, to the deck, to the reel,
-   to case six, along the Process timeline, across the three numbers, to Yohith's photos, into the ring.
+   the whole screen). He only moves when it means something: onto the engines, to the deck, to the game,
+   to case six, along the Process timeline, across the three numbers, to Yashwanth's photos, into the ring.
    In between he waits in the corner of the screen and points at whatever you hover.
    Where he belongs is a pure function of the scroll position, so scrolling back replays it in reverse.
    Scroll back to the top and he jumps out of the page and drops back into his room from the sky.
@@ -2290,7 +2238,7 @@ window.__case = k => openCase(k);
   function say(text, ms = 4800, prio = 1) { if (!text) return; const t = NOW(); if (TH.mode === 'line' && TH.prio > prio && t < TH.until) return;
     TH.mode = 'line'; TH.prio = prio; TH.until = t + ms; if (TH.text !== text) { TH.text = text; mb.textContent = text; TH.w = 0; } }
   const GENZ = ["We're so back.", "Okay I'm back. Did I miss any lore?", "Sorry, side quest. Anyway.", "Main character re-entering the chat.", "Back like I never left. Iconic, honestly."];
-  const GLOBAL = ["Scroll slower. Some of this is funny.", "I'm not a mascot. I'm middle management.", "Ghost founder? Not on his watch.", "Every line on this page? Him. Not a copywriter."];
+  const GLOBAL = ["Scroll slower. Some of this is funny.", "I'm not a mascot. I'm middle management.", "Video, motion, web, security. Pick a hat.", "Every pixel on this page? Hand-placed. Mostly."];
   function ambient() {
     const s = A.at >= 0 ? ST[A.at] : null, id = s ? s.id : 'edge';
     if (TH.next) { const t = TH.next; TH.next = null; say(t, 5600, 0); return; }
@@ -2312,32 +2260,28 @@ window.__case = k => openCase(k);
       w = ws.find(s => s.textContent.toLowerCase().replace(/[^a-z]/g, '') === word) || ws[0]; words.set(id, w); h._fs = parseFloat(getComputedStyle(h).fontSize); }
     const r = rect(w); if (!r.width) return null; return { x: r.left + r.width * .5, y: r.top + r.height * .5 - h._fs * .34, r }; };
   const edgeOf = (el, f) => { if (!shown(el)) return null; const r = rect(el); if (!r.width) return null; return { x: r.left + r.width * f, y: r.top + 1, r }; };
-  const TILE_LINES = { content: 'This one makes you the main character.', podcast: "Your guests are your pipeline. Don't tell them.", revenue: 'He only gets paid when you close. Bold.',
-    paid: "Fuel on what's already on fire.", full: 'All four. Obviously all four.', cta: "Not sure? Click it. I'll hold your coffee." };
-  const CASE_LINES = { ledgerline: 'Ledgerline. The founder posts. Prospects slide into his DMs.', kiln: 'Kiln. The guest list was the sales list.', northstack: 'Northstack. Warm meetings. Every week.', parcel: 'Parcel AI. Cheaper demos, same budget.', overcast: 'Overcast Labs. All four engines. Full send.' };
-  const CARD_LINES = ["That's his AI clone. Better posture than him.", 'Two weeks of research. Done before my smoke break.', 'One voice memo. A month of posts.', "Clips before the coffee's cold. I timed it.",
-    '150 data sources. Basically a stalker, but legal.', 'Guests feel understood. Me? Never.', 'More tests, same budget. Math is hot.', 'The admin nobody misses. Including me.', "That's me on the Joker. Royalty, honestly."];
-  const STEP_LINES = ['Ninety minutes. He asks what your PR team won’t.', 'One shoot day. A month of content. Heist energy.', "The guests? Your buyers. Don't tell them.", 'Five posts a week. From people, not logos.',
-    '500 accounts. Scanning… found a warm one.', 'Cost per demo going down. Like my standards.', 'Warm meetings. Revenue. Act surprised.'];
+  const TILE_LINES = { content: 'Hook in two seconds. Allegedly.', podcast: 'Everything moves. On purpose.', revenue: 'Built by hand. Shipped by hand.',
+    paid: "He breaks things so they don't break.", full: 'Two agencies. Still replies to email.', cta: "Not sure? Click it. I'll hold your coffee." };
+  const CASE_LINES = { yt1: 'Nine minutes. Zero wasted frames. Allegedly.', ig1: 'Vertical, loud and quick.', ig2: 'Another reel. Same energy.', yt2: 'From zero to… a lot of rupees. Allegedly.', nws: 'He built this one. Go click it.', deep: 'Big type. Bigger protein.', raja: 'Giant letters. Tiny pixels. Love it.' };
+  const CARD_LINES = ["Two agencies. This guy never sleeps.", 'Raw footage in. A story out.', 'Everything moves for a reason.', 'Designs it and builds it. Show-off.',
+    'Asks how it could break. Annoying. Useful.', 'One story across every format.', 'New tool? Give him a weekend.', 'Brief to launch. No hand-offs.', "That's me on the Joker. Royalty, honestly."];
+  const STEP_LINES = ['He listens first. Rare.', 'Footage, assets, everything in one folder.', 'Sound is half the video. Trust me.', 'Rough cut first. Polish after.',
+    'Fast, responsive, no template soup.', 'Poked before launch. Gently. Mostly.', 'Everything goes live. Act surprised.'];
   const EDGE_LINES = ['I live down here now.', 'Hover something. I narrate.', 'Take your time. I have cigarettes.'];
   const CLICK = ['Wsg my boy 🤝', 'Ayo, personal space?? jk', "Yo, you good? I'm just vibing fr", "Careful, I'm load-bearing."];
 
   const ST = [];
   const add = o => ST.push(Object.assign({ yaw: 0, lines: [], line: '' }, o));
   const firstTile = Q('.bento:not(.hu-careers) .tile');
-  add({ id: 'bento', geo: () => edgeOf(firstTile, isPhone() ? .78 : .84), act: 'tile', el: firstTile, line: '', lines: ['Four engines. One guy you call. Hover one.', "Your team is the channel. Logos are décor."] });
-  add({ id: 'lab', act: 'lab', lines: ['Every card is a job a junior used to do.', 'He still edits every single one. Nerd.'],
+  add({ id: 'bento', geo: () => edgeOf(firstTile, isPhone() ? .78 : .84), act: 'tile', el: firstTile, line: '', lines: ['Four crafts. One person. Hover one.', 'Specialists hand off. He just… does it.'] });
+  add({ id: 'lab', act: 'lab', lines: ['Every card is a trick up his sleeve.', 'Nine of them. Show-off.'],
     geo: () => { if (!LB) return null;
       if (LB.flat() || !LB.L) { const ui = Q('.deck-ui'); if (!shown(ui)) return null; const r = rect(ui); return { x: r.left + (isPhone() ? 20 : 34), y: r.top - 4, px: BASE() * .95 }; }
       const tr = rect(LB.table), L0 = LB.L; return { x: tr.left + L0.deckX + L0.cw * 1.02, y: tr.top + L0.deckY + L0.ch * .5, px: clamp(L0.ch * .72, 120, 200) }; },
     key: g => (LB && !LB.flat() && LB.L) ? -rect(LB.lab).top - .06 * VH : .6 * VH - g.y });
-  add({ id: 'reel', act: 'watch', yaw: Math.PI, enter: 'walk', line: 'Movie time. Phones down.', lines: ['Shh. This is the good part.', "I've seen this 400 times. Still slaps."],
-    geo: () => { const m = Q('#reelMedia'); if (!shown(m)) return null; const r = rect(m); if (r.width < 20) return null;
-      return { x: r.left + r.width * .1, y: r.bottom - Math.max(3, r.height * .025), px: clamp(r.height * .26, 58, BASE() * 1.1) }; },
-    key: g => .8 * VH - g.y });
-  add({ id: 'six', act: 'six', line: 'Seat six. Saved it for you.', lines: ['This seat has your name on it. Metaphorically.'],
+  add({ id: 'six', act: 'six', line: 'Project six is yours.', lines: ['This spot has your project’s name on it. Metaphorically.'],
     geo: () => { const c = Q('.work > .wk-cta'); if (!shown(c)) return null; const r = rect(c); return { x: r.right - (isPhone() ? 56 : 150), y: r.top + 1, r }; } });
-  add({ id: 'pqHead', geo: onWord('pqTitle', 'in'), act: 'pqHead', line: 'Here’s what happens after you sign.', lines: ["Seven stops. I'll walk you through."] });
+  add({ id: 'pqHead', geo: onWord('pqTitle', 'in'), act: 'pqHead', line: 'Here’s how a project moves.', lines: ["Seven stops. I'll walk you through."] });
   const pqP = () => { const s = rect(Q('#process')); return { s, P: Math.max(0, clamp(-s.top / (s.height - VH * 2)) * 7.6 - .6) }; };
   add({ id: 'rail', act: 'rail', lines: [],
     geo: () => { const rail = Q('#pqRail'); if (!shown(rail)) return null; const r = rect(rail), { P } = pqP(), sf = Math.min(6, Math.floor(P)), tr = sf < 6 ? sm(clamp((P - sf - .62) / .38)) : 0;
@@ -2350,13 +2294,13 @@ window.__case = k => openCase(k);
       const c = rs.cells[k]; if (!shown(c)) return null; const r = rect(c), tx = r.right - 52; numX = numX == null ? tx : numX + (tx - numX) * .07;
       return { x: numX, y: r.top, px: BASE() * .92, k }; },
     key: () => .12 * VH - rect(Q('#results')).top });
-  add({ id: 'human', act: 'human', enter: 'walk', line: 'Meet Yohith. Yes, he’s real.', lines: ['He built all of this. I just live here.', 'Click his face. He loves that.', 'Drag a photo. Go on, toss it.'],
+  add({ id: 'human', act: 'human', enter: 'walk', line: 'Meet Yashwanth. Yes, he’s real.', lines: ['He built all of this. I just live here.', 'Click his face. He loves that.', 'Drag a photo. Go on, toss it.'],
     geo: () => { const s = Q('#huStack'); if (!shown(s)) return null; const r = rect(s); return isPhone() ? { x: Math.min(VW - 26, r.right + 26), y: r.bottom - 8 } : { x: r.left - BASE() * .42, y: r.bottom - 8 }; } });
-  add({ id: 'ring', act: 'ring', clip: true, line: 'Oh hey. You made it to the end.', lines: ['Hover the ring. I dare you.', 'Play my card game. Bet you lose.', "That's the whole site. Go book the call."],
+  add({ id: 'ring', act: 'ring', clip: true, line: 'Oh hey. You made it to the end.', lines: ['Hover the ring. I dare you.', 'Play my card game. Bet you lose.', "That's the whole site. Go say hello."],
     geo: () => { const el = Q('#ctRing'); if (!shown(el)) return null; const r = rect(el), Rr = r.width / 2, cx = r.left + Rr, cy = r.top + Rr;
       return { x: cx, y: cy + Rr * lerp(1.3, .8, sm(A.rise)), px: Rr * 2 * .98, cx, cy, R: Rr }; },
     key: g => .62 * VH - (g.cy + g.R) });
-  add({ id: 'foot', act: 'sit', line: "That's the whole site. Go book the call.", lines: [],
+  add({ id: 'foot', act: 'sit', line: "That's the whole site. Go say hello.", lines: [],
     geo: () => { const b = Q('.ct-base'); if (!shown(b)) return null; const r = rect(b); return { x: r.right - (isPhone() ? 40 : 90), y: r.top + 1 }; } });
   // the corner he waits in: standing on the bottom edge of the window. On phones he ducks while you scroll.
   const EDGE = -2;
@@ -2479,7 +2423,6 @@ window.__case = k => openCase(k);
       let watch = LB.hover; if (watch < 0) { let bt = -1; for (let i = 0; i < LB.N; i++) { const t = (LB.cur - LB.S0 - i * LB.STEP) / LB.DUR; if (t > 0 && t < 1.25 && t > bt) { bt = t; watch = i; } } }
       if (watch >= 0 && LB.els[watch]) { const r = rect(LB.els[watch]); if (LB.hover >= 0) present(p, r.left + r.width / 2, r.top + r.height / 2, c); else { headTo(p, r.left + r.width / 2, r.top + r.height / 2, c.x, c.y, c.k); p.ry = clamp((r.left - c.x) / (c.k * 40), -.3, .3); } }
       else look(p, c); },
-    watch(p, c) { p.yaw = Math.PI; p.hx = -.14 + Math.sin(T * .7) * .03; p.hy = Math.sin(T * .35) * .1; p.rz = Math.sin(T * .9) * .02; },
     six(p, c) { sitPose(p, sm(clamp((NOW() - A.arrT) / 500))); if (!pointAtHover(p, c, false)) look(p, c); },
     sit(p, c) { sitPose(p, sm(clamp((NOW() - A.arrT) / 500))); look(p, c); },
     pqHead(p, c) { const st = rect(Q('#pqStage')); present(p, st.left + st.width * .5, st.top + st.height * .45, c); },
@@ -2522,7 +2465,7 @@ window.__case = k => openCase(k);
     const dist = BOR.dist.reduce((s, [, d]) => s + d, 0);
     if ((BOR.rev.length >= 3 || dist > 14 * innerHeight) && now - BOR.said > 45000) { BOR.said = now; BOR.rev = []; BOR.dist = [];
       const line = 'How long are you going to do this? Just see what he can do.'; if (A.mode === 'room') think(line, 6500); else say(line, 6500, 3); }
-    if (!BOR.idleSaid && now - BOR.idle > 30000) { BOR.idleSaid = true; const line = "Still here? Book the call. He doesn't bite."; if (A.mode === 'room') think(line, 6000); else say(line, 6000, 2); }
+    if (!BOR.idleSaid && now - BOR.idle > 30000) { BOR.idleSaid = true; const line = "Still here? Say hello. He doesn't bite."; if (A.mode === 'room') think(line, 6000); else say(line, 6000, 2); }
   }
   addEventListener('click', e => { if (A.mode !== 'out' || A.hop) return; const k = A.px;
     if (Math.abs(e.clientX - A.x) > k * .3 || e.clientY > A.y + 4 || e.clientY < A.y - k * 1.02) return;
@@ -2530,8 +2473,8 @@ window.__case = k => openCase(k);
     A.bounce = 1; say(CLICK[(A.ci++) % CLICK.length], 3200, 2); }, true);
   window.__marty = {
     say: (t, ms = 3800) => { if (A.mode === 'out') say(t, ms, 2); else if (A.mode === 'room') think(t, ms); },
-    ringHover: on => { window.__ringHover = on; if (on && A.at >= 0 && ST[A.at].id === 'ring' && !A.hop) say("Hi. Book the call. He doesn't bite.", 3400, 2); },
-    poke: () => { if (A.at >= 0 && ST[A.at].id === 'ring') { A.bounce = 1; say(['Okay, okay. I’m up.', 'That tickles. Book the call.', 'Still here? The button’s right there.'][(A.ci++) % 3], 3200, 2); } },
+    ringHover: on => { window.__ringHover = on; if (on && A.at >= 0 && ST[A.at].id === 'ring' && !A.hop) say("Hi. Say hello. He doesn't bite.", 3400, 2); },
+    poke: () => { if (A.at >= 0 && ST[A.at].id === 'ring') { A.bounce = 1; say(['Okay, okay. I’m up.', 'That tickles. Say hello.', 'Still here? The button’s right there.'][(A.ci++) % 3], 3200, 2); } },
     get mode() { return A.mode; }, get at() { return A.at >= 0 ? ST[A.at].id : A.at; },
   };
 
@@ -2614,6 +2557,147 @@ window.__case = k => openCase(k);
   requestAnimationFrame(frame);
 }
 
+
+/* =========================================================
+   PLAY · a 3x3 cube puzzle written for this site with three.js (no third-party code or embeds). The whole section is the play field.
+   The cube never rotates: the camera orbits it, so every layer is always aligned to the x, y or z axis.
+   Drag a piece to flick its layer a quarter turn; drag the background to orbit; keys U D L R F B (Shift reverses).
+   ========================================================= */
+{
+  const stage = document.getElementById('playStage'), sec = document.getElementById('play');
+  const timeEl = document.getElementById('playTime'), movesEl = document.getElementById('playMoves'), bestEl = document.getElementById('playBest'), msgEl = document.getElementById('playMsg');
+  const scrambleBtn = document.getElementById('playScramble'), resetBtn = document.getElementById('playReset');
+  const KEY = 'portfolio-cube-best', calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const FACES = [['px', [1, 0, 0], 0xb71234], ['nx', [-1, 0, 0], 0xff5800], ['py', [0, 1, 0], 0xf2f2ee], ['ny', [0, -1, 0], 0xffd500], ['pz', [0, 0, 1], 0x009b48], ['nz', [0, 0, -1], 0x0046ad]];
+  const AX = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v)), ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const fmt = ms => { const s = ms / 1000, m = Math.floor(s / 60); return `${m}:${(s - m * 60).toFixed(1).padStart(4, '0')}`; };
+
+  let renderer, scene, camera, cube, pivot, cv, cubies = [], stickers = [];
+  let busy = false, state = 'idle', moves = 0, t0 = 0, elapsed = 0, best = 0, timer = 0, drag = null, scrambleLog = [];
+  let az = .78, el = .5, dist = 9.4, needsRender = true, running = false;
+  try { best = +localStorage.getItem(KEY) || 0; } catch (_) {}
+  if (best) bestEl.textContent = fmt(best);
+
+  const say = t => { msgEl.textContent = t; };
+  const ui = () => { timeEl.textContent = fmt(elapsed); movesEl.textContent = moves; };
+  const updateCam = () => { camera.position.set(dist * Math.cos(el) * Math.sin(az), dist * Math.sin(el), dist * Math.cos(el) * Math.cos(az)); camera.lookAt(0, 0, 0); needsRender = true; };
+
+  function build() {
+    const body = new RoundedBoxGeometry(.96, .96, .96, 3, .1), bodyMat = new THREE.MeshStandardMaterial({ color: 0x0c0c0f, roughness: .5, metalness: .05, envMapIntensity: .5 });
+    const sh = new THREE.Shape(), w = .4, r = .12; // a rounded square for each sticker
+    sh.moveTo(-w + r, -w); sh.lineTo(w - r, -w); sh.quadraticCurveTo(w, -w, w, -w + r); sh.lineTo(w, w - r); sh.quadraticCurveTo(w, w, w - r, w);
+    sh.lineTo(-w + r, w); sh.quadraticCurveTo(-w, w, -w, w - r); sh.lineTo(-w, -w + r); sh.quadraticCurveTo(-w, -w, -w + r, -w);
+    const stickerGeo = new THREE.ShapeGeometry(sh), z = new THREE.Vector3(0, 0, 1);
+    cube = new THREE.Group(); scene.add(cube);
+    for (let x = -1; x <= 1; x++) for (let y = -1; y <= 1; y++) for (let zz = -1; zz <= 1; zz++) {
+      const m = new THREE.Mesh(body, bodyMat), p = [x, y, zz]; m.position.set(x, y, zz); m.userData.home = m.position.clone();
+      FACES.forEach(([id, n, color]) => {
+        if (!n.some((v, i) => v && p[i] === v)) return; // only the outside of the cube gets a sticker
+        const s = new THREE.Mesh(stickerGeo, new THREE.MeshStandardMaterial({ color, roughness: .32, envMapIntensity: .6 }));
+        s.position.set(n[0] * .481, n[1] * .481, n[2] * .481); s.quaternion.setFromUnitVectors(z, new THREE.Vector3(...n)); s.userData.face = id;
+        m.add(s); stickers.push(s);
+      });
+      cube.add(m); cubies.push(m);
+    }
+  }
+  function resetCube() { cubies.forEach(c => { c.position.copy(c.userData.home); c.quaternion.identity(); }); needsRender = true; }
+
+  const snap = c => { c.position.set(Math.round(c.position.x), Math.round(c.position.y), Math.round(c.position.z));
+    const m = new THREE.Matrix4().makeRotationFromQuaternion(c.quaternion); m.elements = m.elements.map(Math.round); c.quaternion.setFromRotationMatrix(m); };
+  // quarter turn of one layer: axis index 0..2, layer -1..1, dir +1 = counter-clockwise looking down the +axis
+  function turn(ai, layer, dir, ms) {
+    return new Promise(done => {
+      const sel = cubies.filter(c => Math.round(c.position.getComponent(ai)) === layer), a0 = performance.now();
+      pivot.quaternion.identity(); sel.forEach(c => pivot.attach(c));
+      const step = now => { const k = ms ? Math.min(1, (now - a0) / ms) : 1; pivot.setRotationFromAxisAngle(AX[ai], dir * Math.PI / 2 * ease(k)); needsRender = true;
+        if (k < 1) requestAnimationFrame(step); else { sel.forEach(c => { cube.attach(c); snap(c); }); pivot.quaternion.identity(); done(); } };
+      requestAnimationFrame(step);
+    });
+  }
+  const isSolved = () => { const seen = {}, q = new THREE.Quaternion(), n = new THREE.Vector3();
+    for (const s of stickers) { n.set(0, 0, 1).applyQuaternion(s.getWorldQuaternion(q)); const k = n.toArray().map(Math.round).join(',');
+      if (seen[k] === undefined) seen[k] = s.userData.face; else if (seen[k] !== s.userData.face) return false; }
+    return true; };
+
+  async function userTurn(ai, layer, dir) {
+    if (busy || state === 'scrambling') return; busy = true; await turn(ai, layer, dir, calm ? 0 : 200); busy = false;
+    if (state === 'ready') { state = 'playing'; t0 = performance.now(); timer = setInterval(() => { elapsed = performance.now() - t0; ui(); }, 100); say('Go.'); }
+    if (state !== 'playing') return;
+    moves++; ui(); if (isSolved()) win();
+  }
+  function win() {
+    clearInterval(timer); state = 'solved'; elapsed = performance.now() - t0; ui(); say(`Solved in ${fmt(elapsed)} with ${moves} moves.`);
+    if (!best || elapsed < best) { best = elapsed; bestEl.textContent = fmt(best); try { localStorage.setItem(KEY, Math.round(best)); } catch (_) {} say(`New best: ${fmt(elapsed)} in ${moves} moves.`); }
+    window.__marty?.say('You actually solved it?!', 3600);
+    if (!calm) { const a0 = performance.now(), start = az; const spin = now => { const k = Math.min(1, (now - a0) / 1400); az = start + Math.PI * 2 * ease(k); updateCam(); if (k < 1) requestAnimationFrame(spin); }; requestAnimationFrame(spin); }
+  }
+  async function scramble() {
+    if (busy || state === 'scrambling') return; clearInterval(timer); state = 'scrambling'; busy = true; moves = 0; elapsed = 0; ui(); say('Scrambling…');
+    window.__marty?.say('Good luck. I never solved one.', 3600);
+    let last = -1; scrambleLog = [];
+    for (let i = 0; i < 22; i++) { let ai; do { ai = Math.floor(Math.random() * 3); } while (ai === last && Math.random() < .75);
+      const layer = Math.floor(Math.random() * 3) - 1, dir = Math.random() < .5 ? 1 : -1; scrambleLog.push([ai, layer, dir]); await turn(ai, layer, dir, calm ? 0 : 85); last = ai; }
+    busy = false; state = 'ready'; say('Your move. The clock starts with it.');
+  }
+  function reset() { if (busy) return; clearInterval(timer); resetCube(); state = 'idle'; moves = 0; elapsed = 0; ui(); say('Press Scramble to start the clock.'); }
+
+  // screen position of a world point (px, y down), to decide which way a drag points
+  const toScreen = v => { const r = cv.getBoundingClientRect(), p = v.clone().project(camera); return { x: (p.x * .5 + .5) * r.width, y: (-p.y * .5 + .5) * r.height }; };
+  function flick(d, dx, dy) {
+    const n = new THREE.Vector3().setComponent(d.ai, d.sg); let pick = null;
+    for (let ti = 0; ti < 3; ti++) { if (ti === d.ai) continue; // the two directions lying in the face that was grabbed
+      const t = new THREE.Vector3().setComponent(ti, 1), a = toScreen(d.point), b = toScreen(d.point.clone().add(t)), sx = b.x - a.x, sy = b.y - a.y;
+      const dot = (sx * dx + sy * dy) / (Math.hypot(sx, sy) || 1); if (!pick || Math.abs(dot) > Math.abs(pick.dot)) pick = { t, dot }; }
+    const along = pick.t.multiplyScalar(pick.dot >= 0 ? 1 : -1), A = n.clone().cross(along); // dragging along `along` on face n turns about A = n x along
+    const ai = A.x ? 0 : A.y ? 1 : 2;
+    userTurn(ai, Math.round(d.cubie.position.getComponent(ai)), A.getComponent(ai) > 0 ? 1 : -1);
+  }
+  function wireInput() {
+    const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+    cv.addEventListener('pointerdown', e => {
+      cv.setPointerCapture(e.pointerId); cv.focus({ preventScroll: true }); const r = cv.getBoundingClientRect();
+      ndc.set((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(ndc, camera);
+      const hit = ray.intersectObjects(cubies, false)[0]; drag = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, used: false };
+      if (hit) { const nr = hit.face.normal.clone().transformDirection(hit.object.matrixWorld), ai = [Math.abs(nr.x), Math.abs(nr.y), Math.abs(nr.z)].reduce((m, v, i, a) => v > a[m] ? i : m, 0);
+        Object.assign(drag, { cubie: hit.object, point: hit.point.clone(), ai, sg: Math.sign(nr.getComponent(ai)) }); }
+    });
+    cv.addEventListener('pointermove', e => {
+      if (!drag) return;
+      if (!drag.cubie) { az -= (e.clientX - drag.lx) * .008; el = clamp(el + (e.clientY - drag.ly) * .008, -1.35, 1.35); drag.lx = e.clientX; drag.ly = e.clientY; updateCam(); return; }
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (drag.used || Math.hypot(dx, dy) < 14) return; drag.used = true; flick(drag, dx, dy);
+    });
+    const end = () => { drag = null; }; cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+    const KEYS = { u: [1, 1, -1], d: [1, -1, 1], r: [0, 1, -1], l: [0, -1, 1], f: [2, 1, -1], b: [2, -1, 1] }; // [axis, layer, clockwise direction]
+    cv.addEventListener('keydown', e => { const k = KEYS[e.key.toLowerCase()]; if (!k || e.metaKey || e.ctrlKey || e.altKey) return; e.preventDefault(); userTurn(k[0], k[1], e.shiftKey ? -k[2] : k[2]); });
+  }
+
+  function init() {
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); renderer.setClearColor(0x000000, 0);
+    cv = renderer.domElement; cv.className = 'play-canvas'; cv.tabIndex = 0; cv.setAttribute('aria-label', '3 by 3 cube puzzle. Drag a piece to twist a layer, drag the background to turn the cube. Keys U D L R F B turn a face.');
+    stage.prepend(cv);
+    scene = new THREE.Scene(); camera = new THREE.PerspectiveCamera(36, 1, .1, 60); pivot = new THREE.Group(); scene.add(pivot);
+    scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(renderer), .04).texture;
+    scene.add(new THREE.AmbientLight(0xffffff, .55)); const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(4, 7, 6); scene.add(sun);
+    build(); wireInput(); resize(); new ResizeObserver(resize).observe(stage);
+  }
+  function resize() { const w = stage.clientWidth, h = stage.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); dist = 11.2 * Math.max(1, 1.12 / camera.aspect); updateCam(); }
+  function frame() { if (!running) return; requestAnimationFrame(frame); if (needsRender) { renderer.render(scene, camera); needsRender = false; } }
+  // build and draw only while the section is on screen
+  new IntersectionObserver(es => { const vis = es[0].isIntersecting; if (vis && !renderer) init(); if (vis && !running) { running = true; needsRender = true; frame(); } else if (!vis) running = false; }, { rootMargin: '10% 0px' }).observe(sec);
+
+  scrambleBtn.addEventListener('click', scramble); resetBtn.addEventListener('click', reset);
+  window.__cube = { turn: userTurn, isSolved, get scrambleLog() { return scrambleLog; }, get state() { return state; } }; // debug handle, like window.__case
+  // Marty waits in the corner of the screen, so he can sledge you from there while you play
+  const NUDGES = ['Go on. Press Scramble. I dare you.', 'It does not bite. Mostly.', 'Scared? It is only a cube.'];
+  const TAUNTS = ['That is not how it works.', 'Are you even trying?', 'My nephew does this in nine seconds.', 'Bold strategy. Very bold.', 'Have you tried turning it the other way?', 'Tick tock.', 'I believe in you. Slightly.', 'Is that your final move? It looks tired.'];
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  let inView = false, tauntAt = 0, nudged = false;
+  new IntersectionObserver(es => { inView = es[0].isIntersecting; if (inView) tauntAt = performance.now() + 6000; else nudged = false; }, { threshold: .4 }).observe(sec);
+  setInterval(() => { if (!inView || performance.now() < tauntAt) return;
+    if (state === 'idle' && !nudged) { nudged = true; window.__marty?.say(pick(NUDGES), 4200); }
+    else if (state === 'playing') { window.__marty?.say(pick(TAUNTS), 4200); tauntAt = performance.now() + 14000 + Math.random() * 6000; } }, 1000);
+}
 
 window.__app = { renderer, composer, scene, camera, island, bloom, THREE, buddy, updateBuddy, reveal };
 window.__ready = true;

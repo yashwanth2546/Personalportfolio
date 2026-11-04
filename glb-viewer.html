@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GLB viewer (dev only)</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #16181c; color: #e8e8ea; font: 13px/1.4 system-ui, sans-serif; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #bar { position: fixed; top: 12px; left: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  select, button { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid #3a3d44; background: #23262b; color: inherit; }
+  #info { position: fixed; top: 56px; left: 12px; max-height: calc(100vh - 80px); width: 300px; overflow: auto; padding: 10px 12px; background: rgba(22,24,28,.85); border: 1px solid #2c2f35; border-radius: 10px; font: 12px/1.5 ui-monospace, Consolas, monospace; white-space: pre; }
+  #drop { position: fixed; inset: 0; display: none; place-items: center; background: rgba(0,0,0,.6); font-size: 22px; pointer-events: none; }
+  body.over #drop { display: grid; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <select id="pick" aria-label="Model"></select>
+  <button id="rot" type="button">Auto-rotate: on</button>
+  <button id="wire" type="button">Wireframe: off</button>
+  <span>or drop a .glb anywhere</span>
+</div>
+<div id="info">Loading…</div>
+<div id="drop">Drop .glb to preview</div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+
+const FILES = ['marty/marty.glb', 'marty/marty-old.glb', ...'boombox cigarette_pack desk_lamp_arm_01 metal_stool_02 mid_century_lounge_chair modern_arm_chair_01 modern_ceiling_lamp_01 modern_coffee_table_01 modern_wooden_cabinet potted_plant_02 potted_plant_04 rubber_duck_toy sofa_02 steel_frame_shelves_01 throw_pillows_01 vintage_lighter wine_bottles_01'.split(' ').map(n => `room/${n}.glb`)];
+const pick = document.getElementById('pick'), info = document.getElementById('info');
+FILES.forEach(f => pick.add(new Option(f, f)));
+pick.value = 'marty/marty-old.glb';
+
+const r = new THREE.WebGLRenderer({ antialias: true }); r.setPixelRatio(Math.min(devicePixelRatio, 2)); r.setSize(innerWidth, innerHeight);
+r.outputColorSpace = THREE.SRGBColorSpace; r.toneMapping = THREE.AgXToneMapping; document.body.prepend(r.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#16181c');
+scene.environment = new THREE.PMREMGenerator(r).fromScene(new RoomEnvironment(r), .04).texture;
+const key = new THREE.DirectionalLight('#fff3e2', 2); key.position.set(2, 4, 3); scene.add(key);
+const cam = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, .01, 100);
+const ctl = new OrbitControls(cam, r.domElement); ctl.enableDamping = true; ctl.autoRotate = true; ctl.autoRotateSpeed = 2;
+scene.add(new THREE.GridHelper(4, 16, '#3a3d44', '#262a30'));
+addEventListener('resize', () => { r.setSize(innerWidth, innerHeight); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); });
+
+let model = null, wire = false;
+const loader = new GLTFLoader();
+function show(gltf, label) {
+  if (model) scene.remove(model);
+  model = gltf.scene; scene.add(model);
+  model.updateMatrixWorld(true);
+  const b = new THREE.Box3().setFromObject(model), c = b.getCenter(new THREE.Vector3()), s = b.getSize(new THREE.Vector3());
+  const d = Math.max(s.x, s.y, s.z) * 2.4;
+  ctl.target.set(0, s.y / 2 + b.min.y, 0); cam.position.set(d * .6, s.y * .6 + b.min.y, d); cam.near = d / 100; cam.far = d * 20; cam.updateProjectionMatrix();
+  model.position.x -= c.x; model.position.z -= c.z;
+  let tris = 0, meshes = 0, lines = [];
+  const walk = (o, depth) => { if (o.isMesh) { meshes++; tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; if (wire) o.material.wireframe = true; }
+    if (depth < 5 && o.name) lines.push('  '.repeat(depth) + o.name); o.children.forEach(k => walk(k, depth + (o.name ? 1 : 0))); };
+  walk(model, 0);
+  info.textContent = `${label}\nsize  ${s.x.toFixed(2)} x ${s.y.toFixed(2)} x ${s.z.toFixed(2)}\nmeshes ${meshes}   tris ${Math.round(tris)}\nanimations ${gltf.animations.length}\n\nnodes\n` + lines.slice(0, 120).join('\n');
+}
+const err = (e, label) => { info.textContent = `${label}\nCould not load: ${e.message || e}`; };
+const loadUrl = f => loader.load(`/assets/${f}`, g => show(g, f), undefined, e => err(e, f));
+pick.onchange = () => loadUrl(pick.value);
+document.getElementById('rot').onclick = e => { ctl.autoRotate = !ctl.autoRotate; e.target.textContent = `Auto-rotate: ${ctl.autoRotate ? 'on' : 'off'}`; };
+document.getElementById('wire').onclick = e => { wire = !wire; e.target.textContent = `Wireframe: ${wire ? 'on' : 'off'}`; model?.traverse(o => { if (o.isMesh) o.material.wireframe = wire; }); };
+addEventListener('dragover', e => { e.preventDefault(); document.body.classList.add('over'); });
+addEventListener('dragleave', e => { if (!e.relatedTarget) document.body.classList.remove('over'); });
+addEventListener('drop', e => { e.preventDefault(); document.body.classList.remove('over'); const f = e.dataTransfer.files[0]; if (!f) return;
+  f.arrayBuffer().then(buf => loader.parse(buf, '', g => show(g, f.name), er => err(er, f.name))); });
+loadUrl(pick.value);
+r.setAnimationLoop(() => { ctl.update(); r.render(scene, cam); });
+</script>
+</body>
+</html>
