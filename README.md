@@ -15,10 +15,14 @@ npm run preview  # serve dist/ locally
 - `src/data/` — inlined card-face SVGs and placeholder photos (swap `photos.ts` for real images)
 - `public/assets/` — `.glb` models and textures
 
+## Hero playground
+
+`src/forest.ts` is the hero: a 3D voxel jungle that fills the screen. Walk Marty with WASD (relative to the camera; hold the right mouse button and drag to turn it, wheel zooms once the forest is focused; Shift runs, E acts, Q waves, a joystick on touch). A fox follows him around. The quest lives in `src/forest-quest.ts`: find the sword on its shrine in the jungle, wake the dragon at its lair (left click or E swings, F rolls, jump clears the fire, three hearts), then open the chest, which opens the contact form. `FOREST` in `src/main.ts` switches the whole thing off to bring the old isometric room back.
+
 ## Marty's model
 
-`public/assets/marty/marty.glb` is loaded if it exists; otherwise the blocky built-in Marty (`buildMartyBlocks` in `src/main.ts`) is used.
-The file needs a root node `Buddy` with these nodes (names exact): `Hips`, `Torso`, `Neck`, `Head`, `Leg_L`, `Leg_R`,
-`Arm_L`, `Arm_R`, `UpperArm_L/R`, `Forearm_L/R`, `Hand_L/R`, `Cigarette` (anything he holds in his right hand).
-Joints are in the file's own units: hips at y 0.8, shoulders at x ±0.36 / y 0.52, a 0.63 long arm, feet on y 0.
-`marty-old.glb` is the previous voxel Marty, kept as a reference for that layout.
+`public/assets/marty/marty.glb` is Marty (the voxel explorer: 1,200 triangles, 424 KB). If it can't load, the blocky built-in Marty (`buildMartyBlocks` in `src/main.ts`) takes over.
+`martyFromGLB` rebuilds the file's joint tree into the rig the page animates, so a replacement file needs these nodes (names exact):
+`Pelvis`, `Torso`, `Neck`, `Head`, `Left/RightShoulder`, `Left/RightElbow`, `Left/RightHand`, `Left/RightHip`, `Left/RightKnee`.
+Each limb's meshes hang straight down its joint's local -Y; shoulders sit under `Torso`, elbows under shoulders, hands under elbows. The file is 3.81 tall (scaled to 1.86 on load).
+`marty-old.glb` is the previous voxel Marty, kept for reference only.

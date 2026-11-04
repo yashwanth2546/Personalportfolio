@@ -1345,3 +1345,57 @@ body.ready canvas.scene { z-index: 2; }
   .play-hud { top: 84px; }
   .play-scramble { left: auto; right: var(--pad); translate: none; }
 }
+/* ---- hero playground: a voxel forest behind the headline, steered with WASD ---- */
+.forest { display: none; position: absolute; inset: 0; z-index: 0; overflow: hidden; outline: none; }
+body.has-forest .forest { display: block; }
+body.has-forest .portal { visibility: hidden; pointer-events: none; }   /* keeps its box: the scroll logic that sends Marty onto the page measures it */
+body.has-forest #bubble, body.has-forest #nametag { display: none; }
+.forest::after { content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--base) 55%, transparent) 0%, transparent 16%); }
+.forest-canvas { position: absolute; inset: 0; z-index: 1; display: block; width: 100%; height: 100%; touch-action: pan-y; outline: none; }
+.forest.is-focus .forest-canvas { cursor: crosshair; }
+body.has-forest .hero > .copy { position: relative; z-index: 4; pointer-events: none; }
+body.has-forest .hero > .copy a, body.has-forest .hero > .copy button { pointer-events: auto; }
+.fpin { position: absolute; left: 0; top: 0; z-index: 5; display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 999px; border: 0; cursor: pointer; white-space: nowrap;
+  background: rgba(20,24,18,.72); color: #f4efe6; font: 600 12px/1 var(--sf); backdrop-filter: blur(8px); box-shadow: 0 8px 20px -8px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.14); transition: scale .25s cubic-bezier(.3,1.45,.45,1), background .2s; will-change: transform; }
+.fpin b { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font: 700 10px/1 var(--grotesk); }
+.fpin em { display: none; font: 700 10px/1 var(--grotesk); padding: 4px 6px; border-radius: 6px; background: rgba(255,255,255,.16); font-style: normal; }
+.fpin:hover { background: rgba(20,24,18,.9); }
+.fpin.is-near { scale: 1.12; background: #f4efe6; color: #182113; } .fpin.is-near em { display: block; background: rgba(24,33,19,.12); }
+.fhint { position: absolute; z-index: 5; right: var(--pad); bottom: 22px; display: flex; gap: 14px; padding: 9px 14px; border-radius: 999px; background: rgba(20,24,18,.62); color: rgba(244,239,230,.9);
+  font: 500 12px/1 var(--sf); backdrop-filter: blur(8px); box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); pointer-events: none; transition: opacity .6s; }
+.fhint.quiet { opacity: .5; }
+.fhint span { display: inline-flex; align-items: center; gap: 4px; }
+.fhint kbd { min-width: 22px; padding: 4px 6px; border-radius: 6px; text-align: center; font: 700 11px/1 var(--grotesk); background: rgba(255,255,255,.16); box-shadow: inset 0 -2px rgba(0,0,0,.3); }
+.fjoy { position: fixed; z-index: 70; opacity: 0; pointer-events: none; transition: opacity .3s; left: 22px; bottom: 26px; width: 118px; height: 118px; border-radius: 50%; background: rgba(20,24,18,.38); box-shadow: inset 0 0 0 1px rgba(255,255,255,.22); touch-action: none; display: grid; place-items: center; }
+.fjoy i { width: 50px; height: 50px; border-radius: 50%; background: rgba(244,239,230,.88); box-shadow: 0 6px 14px -4px rgba(0,0,0,.5); }
+.fact { position: fixed; z-index: 70; opacity: 0; pointer-events: none; transition: opacity .3s; right: 24px; bottom: 34px; width: 62px; height: 62px; border-radius: 50%; background: var(--accent); color: #fff; font: 700 20px/1 var(--grotesk); box-shadow: 0 10px 22px -8px rgba(0,0,0,.5); }
+.fjump { right: 96px; bottom: 28px; width: 50px; height: 50px; background: rgba(20,24,18,.7); }
+@media (max-width: 900px) { .forest::after { background: linear-gradient(180deg, color-mix(in srgb, var(--base) 96%, transparent) 0%, color-mix(in srgb, var(--base) 82%, transparent) 38%, transparent 62%); } }
+
+.forest.is-live .fjoy, .forest.is-live .fact { opacity: 1; pointer-events: auto; }
+@media (max-width: 900px) {   /* phones: the playground sits under the headline instead of behind it */
+  body.has-forest .hero > .copy { order: 1; }
+  .forest { position: relative; inset: auto; order: 2; grid-column: 1 / -1; height: max(74svh, 540px); margin: 14px calc(var(--pad) * -1) 0; }
+  .forest::after { background: linear-gradient(180deg, color-mix(in srgb, var(--base) 85%, transparent) 0%, transparent 14%); }
+  body.has-forest .portal { order: 3; min-height: 0; height: 0; }
+}
+
+.trusted-strip { padding: 22px var(--pad) 6px; }
+.trusted-strip .trusted { margin-top: 0; padding-top: 0; }
+.forest.is-look .forest-canvas { cursor: grabbing; }
+
+/* hero adventure: quest card and its markers */
+.fquest { position: absolute; left: var(--pad); top: 92px; z-index: 6; width: min(300px, calc(100% - var(--pad) * 2)); padding: 12px 14px; border-radius: 14px; background: rgba(14,16,20,.72); color: #f3efe6; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 8px 28px rgba(0,0,0,.28); pointer-events: none; font: 500 13px/1.35 var(--sf); }
+.fquest .fq-k { font: 700 10px/1 var(--sf); letter-spacing: .14em; text-transform: uppercase; color: #ff6a3d; margin-bottom: 6px; }
+.fquest .fq-h { display: flex; gap: 3px; margin-top: 8px; color: #ff4d6d; font-size: 16px; line-height: 1; }
+.fquest .fq-h i { font-style: normal; transition: opacity .2s, filter .2s; }
+.fquest .fq-h i.off { opacity: .22; filter: grayscale(1); }
+.fquest .fq-d { margin-top: 10px; display: flex; align-items: center; gap: 8px; font: 700 10px/1 var(--sf); letter-spacing: .12em; text-transform: uppercase; color: #9be86f; }
+.fquest .fq-d[hidden], .fquest .fq-r[hidden] { display: none; }
+.fquest .fq-d b { flex: 1; height: 7px; border-radius: 4px; background: rgba(255,255,255,.14); overflow: hidden; }
+.fquest .fq-d b i { display: block; height: 100%; background: linear-gradient(90deg, #ff5a1f, #ffd23f); transition: width .25s; }
+.fquest .fq-r { margin-top: 10px; pointer-events: auto; cursor: pointer; border: 0; border-radius: 999px; padding: 6px 12px; font: 600 12px/1 var(--sf); background: #ff4500; color: #fff; }
+.fq-pin b { background: #ffd23f; color: #1a1408; }
+@media (max-width: 900px) { .fquest { top: 74px; padding: 9px 11px; font-size: 12px; } }
+.hu-pol img[data-ph="me"] { object-position: 50% 30%; }

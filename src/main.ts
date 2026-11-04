@@ -9,8 +9,10 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { buildCrown } from './crown';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { FACES } from './data/faces';
+import { clipPose } from './marty-clips';
 import { PHOTOS } from './data/photos';
 
 const MAIL = ''; // ← your email address, e.g. 'hello@yourdomain.com'. Every "Let's talk", "Say hello" and collab button uses it.
@@ -18,6 +20,8 @@ const MAIL = ''; // ← your email address, e.g. 'hello@yourdomain.com'. Every "
    Page: stage tracking, IST clock, headline weight hover, button fill
    ========================================================= */
 const stageEl = document.getElementById('stage');
+const FOREST = true;   // the hero is the voxel forest (src/forest.ts); set false to bring the old isometric room back
+if (FOREST) document.body.classList.add('has-forest');
 let STAGE = stageEl.getBoundingClientRect();
 const inStage = e => window.__revealed && e.clientX >= STAGE.left && e.clientX <= STAGE.right && e.clientY >= STAGE.top && e.clientY <= STAGE.bottom;
 
@@ -65,21 +69,6 @@ function tick() {
 }
 tick(); setInterval(tick, 15000);
 
-// Headline: split into letters; weight swells near the cursor
-const headline = document.getElementById('headline');
-headline.querySelectorAll('.in').forEach(el => { el.innerHTML = [...el.textContent].map(c => `<span class="ch">${c}</span>`).join(''); });
-const chars = [...headline.querySelectorAll('.ch')];
-let hlRaf = 0, hlX = -1e4, hlY = -1e4;
-const paintHeadline = () => {
-  hlRaf = 0;
-  for (const c of chars) {
-    const r = c.getBoundingClientRect(), d = Math.hypot(hlX - (r.left + r.width / 2), hlY - (r.top + r.height / 2));
-    const k = Math.max(0, 1 - d / 230), w = 400 + Math.round(300 * k * k * (3 - 2 * k));
-    c.style.fontWeight = w;
-  }
-};
-addEventListener('pointermove', e => { hlX = e.clientX; hlY = e.clientY; if (!hlRaf) hlRaf = requestAnimationFrame(paintHeadline); }, { passive: true });
-headline.addEventListener('pointerleave', () => { hlX = hlY = -1e4; if (!hlRaf) hlRaf = requestAnimationFrame(paintHeadline); });
 
 
 // Magnetic buttons: drift toward the cursor, label leads slightly, spring back on leave
@@ -161,9 +150,10 @@ document.querySelectorAll('.btn').forEach(b => {
 
 /* =========================================================
    MARTY · built in code
-   Marty is built here in blocks: bare chest with an X scar, red sash, white cloud collar, straw hat on his back,
-   wild white voxel hair, a wide grin, baggy white pants, wooden sandals, a bone of meat in his right fist
-   (it steams where the cigarette used to smoke). A fan-made nod to Gear 5 Luffy; no official art or assets.
+   Marty is built here in blocks, after the reference the owner supplied (a blocky Nathan Drake, Uncharted 2, homage):
+   curly dark voxel hair, thick brows and stubble, a blue henley with rolled sleeves, shoulder-holster straps, the ring on
+   a chain, belt with a silver buckle, worn dark cargo pants, brown work boots, and a coffee mug in his right fist
+   (it steams where the cigarette used to smoke). No official art or assets.
    Drop your own model at assets/marty/marty.glb and martyFromGLB() rigs it instead (node names in README). The old voxel one is marty-old.glb.
    The rig and joint positions are the ones every movement on the page is written for, so only the look lives here.
    Rig:  Buddy ─ Hips ─ Leg_L/R ─ Shin_L/R ─ Sneaker
@@ -172,33 +162,44 @@ document.querySelectorAll('.btn').forEach(b => {
                       ├ Arm_L ─ UpperArm_L, Forearm_L ─ Hand_L
                       └ Cigarette (follows the right hand's fingertips)
    ========================================================= */
-function buildMartyBlocks(THREE, RoundedBoxGeometry, mergeGeometries) { // Marty's look: a blocky white-haired, grinning, straw-hat-on-his-back fan homage. Same rig as ever.
+function buildMartyBlocks(THREE, RoundedBoxGeometry, mergeGeometries) { // Marty's look: curly dark hair, stubble, blue henley with rolled sleeves, belt, worn cargo pants, brown boots, a mug. Same rig as ever.
   const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
   let s = 7; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647, rr = (a, b) => a + (b - a) * rnd();
   // tiny pixel textures, nearest-filtered so they read as voxels
   const pix = (w, h, draw) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; return t; };
+  const noise = (w, h, r, g, b, amt, check = 0) => pix(w, h, (c) => { for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const v = rnd() * amt - amt / 2 + (((x + y) & 1) ? check : 0); c.fillStyle = `rgb(${r + v | 0},${g + v | 0},${b + v | 0})`; c.fillRect(x, y, 1, 1); } });
   const TX = {
-    skin: pix(8, 8, g => { for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) { const v = rnd() * 10 - 5; g.fillStyle = `rgb(${226 + v | 0},${168 + v | 0},${122 + v | 0})`; g.fillRect(x, y, 1, 1); } }),
-    pants: pix(16, 32, (g, w, h) => { const t = ['#f4f2ec', '#ebe8e0', '#f9f7f2', '#e2dfd6', '#fdfcf8']; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { g.fillStyle = t[(rnd() * (rnd() < .7 ? 2 : 5)) | 0]; g.fillRect(x, y, 1, 1); } }),
+    skin: noise(8, 8, 228, 160, 112, 12),
+    shirt: noise(16, 16, 78, 116, 170, 18, 6),
+    pants: noise(16, 32, 62, 58, 64, 14),
+    boot: noise(8, 8, 112, 72, 42, 14),
+    beard: pix(8, 8, c => { const t = ['#7a553c', '#8a6244', '#9c7050', '#6b4a33', '#a47a58']; for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) { c.fillStyle = t[(rnd() * 5) | 0]; c.fillRect(x, y, 1, 1); } }),
   };
+  const std = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: .85, envMapIntensity: .25, ...o });
   const MAT = {
     skin: new THREE.MeshStandardMaterial({ map: TX.skin, roughness: .75, envMapIntensity: .25 }),
+    shirt: new THREE.MeshStandardMaterial({ map: TX.shirt, roughness: .95, envMapIntensity: .25 }),
+    cuff: std('#6a8fc4', { roughness: .95 }),
+    collar: std('#46689c', { roughness: .95 }),
     pants: new THREE.MeshStandardMaterial({ map: TX.pants, roughness: .95, envMapIntensity: .25 }),
-    cloud: new THREE.MeshStandardMaterial({ color: '#fbfbff', roughness: 1, envMapIntensity: .35 }),
-    sash: new THREE.MeshStandardMaterial({ color: '#c4231d', roughness: .85, envMapIntensity: .25 }),
-    scar: new THREE.MeshStandardMaterial({ color: '#8a3f30', roughness: .8 }),
-    sole: new THREE.MeshStandardMaterial({ color: '#5a3a22', roughness: .8, envMapIntensity: .2 }),
-    straw: new THREE.MeshStandardMaterial({ color: '#e9c96b', roughness: .9, envMapIntensity: .3 }),
-    cord: new THREE.MeshStandardMaterial({ color: '#7a5a38', roughness: .8 }),
-    eyeW: new THREE.MeshStandardMaterial({ color: '#fbfbfb', roughness: .35 }),
-    eye: new THREE.MeshStandardMaterial({ color: '#0a0a0a', roughness: .4 }),
-    brow: new THREE.MeshStandardMaterial({ color: '#f1f1f4', roughness: .8 }),
-    mouth: new THREE.MeshStandardMaterial({ color: '#4a1410', roughness: .7 }),
-    tongue: new THREE.MeshStandardMaterial({ color: '#c8514a', roughness: .6 }),
-    hair: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .9, envMapIntensity: .35 }),
-    bone: new THREE.MeshStandardMaterial({ color: '#f1e6cf', roughness: .6 }),
-    meat: new THREE.MeshStandardMaterial({ color: '#b4562b', roughness: .55, envMapIntensity: .4 }),
+    patch: std('#a8693a'),
+    belt: std('#5a3a22', { roughness: .7 }),
+    buckle: new THREE.MeshStandardMaterial({ color: '#b9bcc0', metalness: .7, roughness: .35, envMapIntensity: .6 }),
+    boot: new THREE.MeshStandardMaterial({ map: TX.boot, roughness: .8, envMapIntensity: .3 }),
+    bootDark: std('#5a3a22', { roughness: .75 }),
+    sole: std('#2a2220', { roughness: .9 }),
+    lace: std('#c9a36b'),
+    beard: new THREE.MeshStandardMaterial({ map: TX.beard, roughness: .95, envMapIntensity: .2 }),
+    stache: std('#4b2f1c'),
+    nose: std('#c98a5e', { roughness: .75 }),
+    brow: std('#2a1a10'),
+    eyeW: std('#f4f2ee', { roughness: .35 }),
+    eye: std('#150f0c', { roughness: .4 }),
+    mouth: std('#9a5a45', { roughness: .7 }),
+    hair: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .85, envMapIntensity: .3 }),
+    mug: std('#ece8de', { roughness: .45 }),
+    coffee: std('#3b2314', { roughness: .5 }),
     ember: new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, .6, .1), toneMapped: false }),  // invisible; it only marks where the steam rises
   };
   const mesh = (g, m) => { const o = new THREE.Mesh(g, m); o.castShadow = o.receiveShadow = true; return o; };
@@ -207,21 +208,22 @@ function buildMartyBlocks(THREE, RoundedBoxGeometry, mergeGeometries) { // Marty
   const box = (w, h, d, m) => mesh(new THREE.BoxGeometry(w, h, d), m);
   const rbox = (w, h, d, r, m) => mesh(new RoundedBoxGeometry(w, h, d, 2, Math.min(r, w / 2, h / 2, d / 2) * .999), m);
   const cyl = (r0, r1, h, m, seg = 10) => mesh(new THREE.CylinderGeometry(r0, r1, h, seg), m);
-  const sph = (r, m) => mesh(new THREE.SphereGeometry(r, 10, 8), m);
 
   const M = { HEIGHT: 1.86, hip: .93, shR: V(-.19, .53, 0), shL: V(.19, .53, 0), A: .285, B: .285,
-    rest: V(-.15, .38, .2), puff: V(-.06, .58, .2), pocket: V(.08, .12, .15), poleR: V(-.8, -.5, -.3), poleL: V(.9, -.3, -.3), headY: 1.66, sitDrop: -.86 };
+    rest: V(-.15, .38, .2), puff: V(-.06, .58, .2), pocket: V(.08, .12, .15), poleR: V(-.8, -.5, -.3), poleL: V(.9, -.3, -.3), headY: 1.66, sitDrop: -.86,
+    walk: V(.24, -.02, .04), walkSwing: .18, mouth: V(.01, .055, .12), crown: { s: .36, p: V(.005, .26, -.01) }, bubbleY: .3 };
   const root = grp('Buddy');
 
-  // ---------- legs: baggy white pants, bare feet in wooden sandals ----------
+  // ---------- legs: worn dark cargo pants, brown work boots ----------
   const hips = grp('Hips', root); hips.position.y = M.hip;
   hips.add(at(rbox(.36, .12, .21, .02, MAT.pants), 0, -.04, 0));
-  function sandal(side) {
-    const g = grp('Sneaker_' + side);                                                                     // (name kept: the page host looks the feet up by it)
-    g.add(at(rbox(.13, .03, .31, .012, MAT.sole), 0, .015, .03));
-    g.add(at(rbox(.1, .055, .22, .025, MAT.skin), 0, .056, .0));                                           // foot
-    g.add(at(rbox(.095, .03, .075, .015, MAT.skin), 0, .045, .13));                                        // toes
-    g.add(at(rbox(.115, .014, .05, .005, MAT.sash), 0, .09, .03));                                         // strap
+  function boot(side) {
+    const g = grp('Sneaker_' + side);                                                                      // (name kept: the page host looks the feet up by it)
+    g.add(at(rbox(.14, .035, .33, .012, MAT.sole), 0, .018, .03));
+    g.add(at(rbox(.125, .08, .28, .03, MAT.boot), 0, .075, .02));
+    g.add(at(rbox(.128, .05, .1, .02, MAT.bootDark), 0, .06, .135));                                      // toe cap
+    g.add(at(rbox(.12, .05, .08, .02, MAT.bootDark), 0, .06, -.1));                                       // heel
+    for (let i = 0; i < 3; i++) g.add(at(rbox(.07, .008, .014, .003, MAT.lace), 0, .12, .09 - i * .035));
     return g;
   }
   const legs = {};
@@ -229,113 +231,136 @@ function buildMartyBlocks(THREE, RoundedBoxGeometry, mergeGeometries) { // Marty
     const x = side === 'L' ? .095 : -.095, o = side === 'L' ? 1 : -1;
     const leg = grp('Leg_' + side, hips); leg.position.set(x, -.04, 0);
     leg.add(at(rbox(.175, .46, .2, .025, MAT.pants), 0, -.215, 0));
+    leg.add(at(rbox(.04, .11, .1, .012, MAT.pants), o * .105, -.17, .01));                                 // cargo pocket
+    leg.add(at(rbox(.03, .05, .06, .008, MAT.patch), o * -.04, -.24, .1));                                 // worn patch
     const shin = grp('Shin_' + side, leg); shin.position.y = -.44;
     shin.add(at(rbox(.18, .3, .2, .025, MAT.pants), o * .003, -.13, .004));
-    shin.add(at(rbox(.2, .1, .21, .03, MAT.pants), 0, -.3, .015));                                         // bunched hem
-    for (let i = 0; i < 3; i++) shin.add(at(rbox(.2, .025, .16, .01, MAT.pants), rr(-.006, .006), -.2 - i * .035, rr(.03, .05), rr(-.1, .1), 0, rr(-.08, .08)));
-    const sn = sandal(side); sn.scale.setScalar(1.2); sn.position.set(0, -.49, .04); sn.rotation.y = side === 'L' ? -.06 : .08; shin.add(sn);
+    shin.add(at(rbox(.03, .06, .06, .008, MAT.patch), o * .04, -.1, .1));
+    shin.add(at(rbox(.205, .09, .215, .03, MAT.boot), 0, -.3, .012));                                      // boot shaft
+    shin.add(at(rbox(.215, .035, .225, .015, MAT.bootDark), 0, -.255, .012));                              // folded cuff
+    const sn = boot(side); sn.scale.setScalar(1.2); sn.position.set(0, -.49, .04); sn.rotation.y = side === 'L' ? -.06 : .08; shin.add(sn);
     legs[side] = { leg, shin };
   }
 
-  // ---------- torso: bare chest with the X scar, a red sash, a white cloud collar, the straw hat on his back ----------
+  // ---------- torso: blue henley, belt with a silver buckle ----------
   const torso = grp('Torso', root); torso.position.y = M.hip;
-  torso.add(at(rbox(.38, .56, .23, .03, MAT.skin), 0, .27, 0));
-  for (const sz of [-1, 1]) torso.add(at(box(.016, .24, .006, MAT.scar), 0, .36, .118, 0, 0, sz * .62));    // X scar
-  torso.add(at(rbox(.41, .09, .25, .03, MAT.sash), 0, .01, 0));                                           // sash
-  torso.add(at(rbox(.07, .07, .04, .015, MAT.sash), .1, 0, .13));                                         // knot
-  for (const sx of [0, 1]) torso.add(at(rbox(.04, .13, .015, .005, MAT.sash), .09 + sx * .04, -.09, .135, 0, 0, (sx ? -1 : 1) * .12));
-  { const n = 9; for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; torso.add(at(sph(rr(.055, .075), MAT.cloud), Math.sin(a) * .16, .56 + rr(-.01, .02), Math.cos(a) * .12)); }
-    for (const sx of [-1, 1]) torso.add(at(sph(.085, MAT.cloud), sx * .21, .5, 0)); }                      // collar + shoulder puffs
-  { const hat = grp('Hat', torso); hat.position.set(0, .4, -.17); hat.rotation.x = Math.PI / 2 - .12;     // hangs flat against his back
-    hat.add(cyl(.2, .2, .012, MAT.straw, 20)); hat.add(at(cyl(.095, .105, .085, MAT.straw, 16), 0, .045, 0)); hat.add(at(cyl(.108, .108, .02, MAT.sash, 16), 0, .02, 0));
-    for (const sx of [-1, 1]) torso.add(at(cyl(.004, .004, .22, MAT.cord, 6), sx * .05, .52, -.1, -.5, 0, sx * .3)); }
+  torso.add(at(rbox(.38, .56, .23, .03, MAT.shirt), 0, .27, 0));
+  torso.add(at(rbox(.385, .05, .235, .02, MAT.shirt), 0, .05, 0));                                         // untucked hem
+  torso.add(at(rbox(.395, .055, .24, .015, MAT.belt), 0, -.005, 0));                                       // belt
+  torso.add(at(box(.07, .045, .012, MAT.buckle), 0, -.005, .122));
+  torso.add(at(box(.1, .13, .01, MAT.skin), 0, .47, .117));                                                // open collar
+  for (const sx of [-1, 1]) torso.add(at(box(.035, .15, .014, MAT.collar), sx * .062, .47, .118, 0, 0, sx * -.12));
+  torso.add(at(rbox(.26, .05, .2, .02, MAT.collar), 0, .56, 0));                                           // neckband
+  // shoulder-holster straps (front and back, no weapon drawn) and the ring on a chain
+  for (const z of [.12, -.12]) torso.add(at(box(.035, .6, .008, MAT.belt), z > 0 ? -.03 : .03, .28, z, 0, 0, z > 0 ? -.55 : .55));
+  torso.add(at(rbox(.075, .13, .035, .01, MAT.belt), .12, .08, .125));
+  torso.add(at(mesh(new THREE.TorusGeometry(.016, .005, 6, 14), MAT.buckle), 0, .42, .122));
+  for (const sx of [-1, 1]) torso.add(at(box(.004, .1, .004, MAT.buckle), sx * .035, .5, .12, 0, 0, sx * -.4));
 
-  // ---------- head: the voxel cube, a wide grin, and wild white hair ----------
+  // ---------- head: the voxel cube, thick brows, stubble, curly dark hair ----------
   const neck = grp('Neck', torso); neck.position.y = .6;
   neck.add(at(box(.12, .1, .11, MAT.skin), 0, .02, 0));
   const head = grp('Head', neck); head.position.set(0, .085, .01);
   const face = grp('Face', head); face.scale.setScalar(.727); face.position.y = -.03;           // built in the original 0.44 units
   face.add(at(box(.44, .44, .44, MAT.skin), 0, .22, 0));
+  face.add(at(box(.448, .17, .448, MAT.beard), 0, .085, 0));                                    // stubble wraps the jaw
   for (const sx of [-1, 1]) {
-    face.add(at(box(.1, .115, .012, MAT.eyeW), sx * .105, .245, .222));                         // wide open eyes
-    face.add(at(box(.044, .066, .012, MAT.eye), sx * .097, .245, .229));
-    face.add(at(box(.11, .03, .012, MAT.brow), sx * .105, .33, .222, 0, 0, sx * -.12));
+    face.add(at(box(.085, .062, .012, MAT.eyeW), sx * .105, .245, .222));
+    face.add(at(box(.044, .062, .012, MAT.eye), sx * .105, .245, .229));
+    face.add(at(box(.13, .04, .016, MAT.brow), sx * .105, .322, .222, 0, 0, sx * .15));         // thick, slightly stern brows
   }
-  face.add(at(box(.012, .05, .008, MAT.scar), .105, .165, .222));                               // scar under his left eye
-  face.add(at(box(.034, .01, .008, MAT.scar), .105, .18, .222)); face.add(at(box(.034, .01, .008, MAT.scar), .105, .15, .222));
-  face.add(at(box(.28, .1, .012, MAT.mouth), 0, .095, .221));                                   // the grin
-  face.add(at(box(.26, .034, .014, MAT.eyeW), 0, .128, .224));                                  // teeth
-  face.add(at(box(.12, .03, .014, MAT.tongue), 0, .066, .224));
-  { const VX = .058, geos = [], col = new THREE.Color(), palette = ['#ffffff', '#f6f7fb', '#e9ecf5', '#dfe3ef', '#cfd5e6', '#efe9ff'];
-    const addV = (x, y, z) => { const g = new THREE.BoxGeometry(VX * rr(.92, 1.1), VX * rr(.92, 1.15), VX * rr(.92, 1.1)); g.translate(x, y, z);
-      const r = rnd(); col.set(palette[r < .45 ? 0 : r < .7 ? 1 : r < .84 ? 2 : r < .93 ? 3 : r < .97 ? 4 : 5]);
+  face.add(at(box(.06, .075, .03, MAT.nose), 0, .185, .232));
+  face.add(at(box(.16, .03, .012, MAT.stache), 0, .13, .226));
+  face.add(at(box(.1, .014, .012, MAT.mouth), 0, .102, .227));
+  { const VX = .058, geos = [], col = new THREE.Color(), palette = ['#2a1a10', '#3a2416', '#4b2f1c', '#5c3a22', '#1f130b', '#6b4528'];
+    const addV = (x, y, z) => { const g = new THREE.BoxGeometry(VX * rr(.92, 1.12), VX * rr(.92, 1.15), VX * rr(.92, 1.12)); g.translate(x, y, z);
+      const r = rnd(); col.set(palette[r < .3 ? 0 : r < .55 ? 1 : r < .75 ? 2 : r < .88 ? 3 : r < .95 ? 4 : 5]);
       const c = new Float32Array(g.attributes.position.count * 3); for (let i = 0; i < c.length; i += 3) { c[i] = col.r; c[i + 1] = col.g; c[i + 2] = col.b; }
       g.setAttribute('color', new THREE.BufferAttribute(c, 3)); g.deleteAttribute('uv'); geos.push(g); };
     const H = .44, half = .22, n = 9;
-    for (let i = 0; i < n; i++) for (let k = 0; k < n; k++) {            // top: wild, uneven 1–4 voxel stacks
-      const x = -half - .02 + i * (H + .04) / (n - 1), z = -half - .02 + k * (H + .04) / (n - 1), stack = 1 + (rnd() < .7 ? 1 : 0) + (rnd() < .45 ? 1 : 0) + (rnd() < .2 ? 1 : 0);
-      for (let q = 0; q < stack; q++) addV(x + rr(-.014, .014), H + VX * .35 + q * VX * .8, z + rr(-.014, .014)); }
-    for (let i = 0; i < n; i++) { const x = -half + i * H / (n - 1), drop = 1 + (rnd() * 1.6 | 0); for (let d = 0; d < drop; d++) addV(x, H - d * VX * .9, half + VX * .25 + rr(0, .01)); } // fringe, kept short so the eyes stay clear
-    for (const sx of [-1, 1]) for (let k = 0; k < n; k++) { const z = -half + k * H / (n - 1), drop = (k < 4 ? 5 : 3) + (rnd() * 2 | 0); for (let d = 0; d < drop; d++) addV(sx * (half + VX * .3), H - d * VX * .9, z); } // sides
+    for (let i = 0; i < n; i++) for (let k = 0; k < n; k++) {            // top: tall, uneven curls
+      const x = -half - .02 + i * (H + .04) / (n - 1), z = -half - .02 + k * (H + .04) / (n - 1), stack = 1 + (rnd() < .65 ? 1 : 0) + (rnd() < .4 ? 1 : 0) + (rnd() < .12 ? 1 : 0);
+      for (let q = 0; q < stack; q++) addV(x + rr(-.016, .016), H + VX * .35 + q * VX * .8, z + rr(-.016, .016)); }
+    for (let i = 0; i < n; i++) { const x = -half + i * H / (n - 1), drop = 1 + (rnd() * 1.6 | 0); for (let d = 0; d < drop; d++) addV(x, H - d * VX * .9, half + VX * .25 + rr(0, .012)); } // fringe, above the brows
+    for (const sx of [-1, 1]) for (let k = 0; k < n; k++) { const z = -half + k * H / (n - 1), drop = (k < 4 ? 4 : 3) + (rnd() * 2 | 0); for (let d = 0; d < drop; d++) addV(sx * (half + VX * .3 + rr(0, .01)), H - d * VX * .9, z); } // sides
     for (let i = 0; i < n; i++) { const x = -half + i * H / (n - 1), drop = 6 + (rnd() * 2 | 0); for (let d = 0; d < drop; d++) addV(x, H - d * VX * .9, -half - VX * .3 - (d > 4 ? .01 : 0)); } // back
     const hair = mesh(mergeGeometries(geos), MAT.hair); hair.name = 'Hair'; face.add(hair); }
 
-  // ---------- arms: bare arms, white cloud cuffs, cube hands. 2-bone IK places them each frame ----------
+  // ---------- arms: rolled blue sleeves, bare forearms, cube hands. 2-bone IK places them each frame ----------
   function makeArm(side) {
     const arm = grp('Arm_' + side, torso);
-    const upper = grp('UpperArm_' + side, arm); upper.add(at(rbox(.12, .3, .14, .03, MAT.skin), 0, -.14, 0));
-    const fore = grp('Forearm_' + side, arm); fore.add(at(rbox(.115, .25, .135, .03, MAT.skin), 0, -.12, 0)); fore.add(at(sph(.085, MAT.cloud), 0, -.235, 0));
+    const upper = grp('UpperArm_' + side, arm);
+    upper.add(at(rbox(.12, .3, .14, .03, MAT.skin), 0, -.14, 0));
+    upper.add(at(rbox(.138, .2, .158, .03, MAT.shirt), 0, -.1, 0));                                         // short sleeve
+    upper.add(at(rbox(.148, .05, .168, .015, MAT.cuff), 0, -.2, 0));                                        // rolled cuff
+    const fore = grp('Forearm_' + side, arm); fore.add(at(rbox(.115, .25, .135, .03, MAT.skin), 0, -.12, 0));
     const hand = grp('Hand_' + side, fore); hand.position.y = -M.B; hand.add(at(box(.085, .085, .085, MAT.skin), 0, -.03, 0));
-    return { arm, upper, fore, hand, A: M.A, B: M.B };
+    return { arm, upper, fore, hand, A: M.A, B: M.B, elbowOff: V(0, -M.A, 0) };
   }
   const armR = makeArm('R'), armL = makeArm('L');
 
-  // ---------- a bone of meat in his right fist (the old cigarette slot: same name, same grip) ----------
+  // ---------- a coffee mug in his right fist (the old cigarette slot: same name, same grip) ----------
   const cig = grp('Cigarette', torso);
   cig.quaternion.setFromUnitVectors(V(0, 1, 0), V(-1, .3, .55).normalize());
-  cig.add(at(cyl(.012, .012, .2, MAT.bone, 10), 0, .06, 0));
-  for (const sx of [-1, 1]) cig.add(at(sph(.02, MAT.bone), sx * .012, .165, 0));
-  const chunk = at(sph(.058, MAT.meat), 0, .1, 0); chunk.scale.set(1, 1.15, 1); cig.add(chunk);
-  const ember = at(cyl(.0118, .0118, .012, MAT.ember, 12), 0, .19, 0); ember.castShadow = false; ember.visible = false; cig.add(ember);
+  cig.add(at(cyl(.034, .03, .075, MAT.mug, 14), 0, .06, 0));
+  cig.add(at(cyl(.029, .029, .004, MAT.coffee, 14), 0, .098, 0));
+  cig.add(at(rbox(.012, .05, .04, .004, MAT.mug), .045, .06, 0));                                           // handle
+  const ember = at(cyl(.0118, .0118, .012, MAT.ember, 12), 0, .11, 0); ember.castShadow = false; ember.visible = false; cig.add(ember);
 
-  // fingertips of the right hand, in torso space (so the meat is always in his fist)
+  // fingertips of the right hand, in torso space (so the mug is always in his fist)
   const _d = V(), _down = V(0, -1, 0);
   const tipOf = (out) => { _d.copy(_down).applyQuaternion(armR.fore.quaternion); return out.copy(armR.fore.position).addScaledVector(_d, M.B + .06); };
   return { root, hips, torso, neck, head, legs, armR, armL, cig, ember, MAT, M, tipOf };
 }
 
-function martyFromGLB(THREE, gltf) {
+function martyFromGLB(THREE, gltf) { // the voxel explorer file (assets/marty/marty.glb): rigid parts on a named joint tree, rebuilt here into the rig the page animates
   const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
-  const src = gltf.scene.getObjectByName('Buddy'); src.removeFromParent(); src.position.set(0, 0, 0); src.quaternion.identity(); src.scale.set(1, 1, 1);
-  const NODES = {}; src.traverse(o => { if (o.name && !NODES[o.name]) NODES[o.name] = o; }); const g = n => NODES[n];
-  const MAT = { ember: new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, .6, .1), toneMapped: false }) };
-  // his joints, in the units of the file (hips at 0.8, shoulders at ±0.36, a 0.63 arm)
-  const S = .92;                                   // the file is a touch big for the room; this keeps him the size he always was
-  const M = { HEIGHT: 2.04 * S, hip: .8, shR: V(-.36, .52, 0), shL: V(.36, .52, 0), A: .31, B: .32, tip: .03,
-    rest: V(-.21, .63, .28), puff: V(-.12, .69, .27), pocket: V(.25, -.06, .07), poleR: V(-.7, -.6, -.4), poleL: V(.8, .1, -.6), headY: 1.52, sitDrop: -.74 };
+  const NODES = {}; gltf.scene.traverse(o => { if (o.name && !NODES[o.name]) NODES[o.name] = o; });   // looked up once, before the tree is taken apart
+  const need = n => { const o = NODES[n]; if (!o) throw new Error('marty.glb has no node ' + n); return o; };
+  const pelvis = need('Pelvis'), torsoIn = need('Torso'), head = need('Head');
+  ['Pelvis', 'Torso', 'Neck', 'Head', 'LeftShoulder', 'LeftElbow', 'LeftHand', 'RightShoulder', 'RightElbow', 'RightHand', 'LeftHip', 'LeftKnee', 'RightHip', 'RightKnee']
+    .forEach(n => need(n).quaternion.identity());   // the file was saved mid-animation; limbs hang straight down so the page's IK can aim them
+  const S = 1.86 / 3.81, HIP = pelvis.position.y;   // the file is 3.81 tall; Marty has always been 1.86
   const root = new THREE.Group(); root.name = 'Buddy';
   const body = new THREE.Group(); body.name = 'Body'; body.scale.setScalar(S); root.add(body);
-  const hips = g('Hips'), torso = g('Torso'), neck = g('Neck'), head = g('Head');
-  body.add(hips, torso);
-  torso.scale.set(1, 1, 1); head.quaternion.identity(); head.scale.setScalar(1.12);   // the file was saved mid-breath with his head tilted
-  src.updateMatrixWorld(true); body.updateMatrixWorld(true);
-  // knees: everything below the knee moves to a shin group so the walk and sit can bend it
+  pelvis.removeFromParent(); pelvis.name = 'Hips'; pelvis.position.set(0, HIP, 0); body.add(pelvis);
+  // the page moves hips and torso as siblings, so the torso gets its own group at hip height
+  const torso = new THREE.Group(); torso.name = 'Torso'; torso.position.y = HIP; body.add(torso);
+  torsoIn.removeFromParent(); torsoIn.name = 'TorsoMesh'; torso.add(torsoIn);
+  // arms: the file nests shoulder > elbow > hand, the page aims upper and fore as siblings (2-bone IK)
+  const makeArm = side => {
+    const sh = need(side + 'Shoulder'), el = need(side + 'Elbow'), hand = need(side + 'Hand'), c = side[0];
+    const arm = new THREE.Group(); arm.name = 'Arm_' + c; torso.add(arm);
+    const upper = new THREE.Group(); upper.name = 'UpperArm_' + c; const fore = new THREE.Group(); fore.name = 'Forearm_' + c; arm.add(upper, fore);
+    const pos = sh.position.clone().add(torsoIn.position), A = el.position.length(), B = hand.position.length();
+    [...sh.children].forEach(ch => { if (ch !== el) upper.add(ch); });
+    [...el.children].forEach(ch => fore.add(ch));
+    sh.removeFromParent(); el.removeFromParent();
+    return { arm, upper, fore, hand, A, B, pos, elbowOff: el.position.clone() };
+  };
+  const armL = makeArm('Left'), armR = makeArm('Right');
   const legs = {};
-  for (const side of ['L', 'R']) {
-    const leg = g('Leg_' + side), shin = new THREE.Group(); shin.name = 'Shin_' + side; shin.position.set(0, -.3, 0); leg.add(shin); leg.updateMatrixWorld(true);
-    const kneeY = new THREE.Vector3(0, 0, 0); shin.localToWorld(kneeY);
-    [...leg.children].forEach(c => { if (c === shin) return; const b = new THREE.Box3().setFromObject(c); if (c.name.startsWith('Sneaker') || (b.min.y + b.max.y) / 2 < kneeY.y - .02 * S) shin.attach(c); });
-    legs[side] = { leg, shin };
-  }
-  const arm = side => ({ arm: g('Arm_' + side), upper: g('UpperArm_' + side), fore: g('Forearm_' + side), hand: g('Hand_' + side), A: M.A, B: M.B });
-  const armR = arm('R'), armL = arm('L');
-  const cig = g('Cigarette'); let ember = null;
-  cig.traverse(o => { if (o.isMesh && o.material && o.material.isMeshBasicMaterial) { o.material = MAT.ember; ember = o; } });
-  if (!ember) { ember = new THREE.Mesh(new THREE.CylinderGeometry(.0118, .0118, .012, 12), MAT.ember); ember.position.y = .131; cig.add(ember); }
+  for (const side of ['Left', 'Right']) { const c = side[0], leg = need(side + 'Hip'), shin = need(side + 'Knee'); leg.name = 'Leg_' + c; shin.name = 'Shin_' + c; legs[c] = { leg, shin, boot: NODES[side + 'Boot'] }; }
+  // hand targets were written for a .63 arm with shoulders at (±.36, .52); scale them onto this one
+  const { A, B } = armL, k = (A + B) / .63, shL = armL.pos, shR = armR.pos, L0 = V(.36, .52, 0), R0 = V(-.36, .52, 0);
+  const rel = (p, s0, s) => s.clone().add(p.clone().sub(s0).multiplyScalar(k));
+  const M = { S, HEIGHT: 3.81 * S, hip: HIP, shR, shL, A, B, tip: .12,
+    rest: rel(V(-.21, .63, .28), R0, shR), puff: rel(V(-.12, .69, .27), R0, shR), pocket: rel(V(.25, -.06, .07), L0, shL),
+    walk: rel(V(.24, -.02, .04), L0, shL), walkSwing: .18 * k,
+    poleR: V(-.7, -.6, -.4), poleL: V(.8, .1, -.6), headY: 2.98 * S, sitDrop: -1.22,
+    mouth: V(0, .1, .45), crown: { s: 1.8, p: V(0, 1.2, -.02) }, bubbleY: 1.35 };
+  // a coffee mug in his right fist (same node name the page already follows to his fingertips)
+  const MAT = { ember: new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, .6, .1), toneMapped: false }) };   // invisible; it only marks where the steam rises
+  const mug = new THREE.MeshStandardMaterial({ color: '#ece8de', roughness: .45 }), coffee = new THREE.MeshStandardMaterial({ color: '#3b2314', roughness: .5 });
+  const cig = new THREE.Group(); cig.name = 'Cigarette'; cig.scale.setScalar(1.5 / S); torso.add(cig);
+  cig.quaternion.setFromUnitVectors(V(0, 1, 0), V(-1, .3, .55).normalize());
+  const part = (g, m, x, y, z) => { const o = new THREE.Mesh(g, m); o.position.set(x, y, z); cig.add(o); return o; };
+  part(new THREE.CylinderGeometry(.034, .03, .075, 14), mug, 0, .06, 0); part(new THREE.CylinderGeometry(.029, .029, .004, 14), coffee, 0, .098, 0); part(new THREE.BoxGeometry(.012, .05, .04), mug, .045, .06, 0);
+  const ember = part(new THREE.CylinderGeometry(.0118, .0118, .012, 12), MAT.ember, 0, .11, 0); ember.visible = false;
   root.traverse(o => { if (o.isMesh) { o.castShadow = o.receiveShadow = o !== ember; if (o.material && 'envMapIntensity' in o.material && o.material !== MAT.ember) o.material.envMapIntensity = .3; } });
   const _d = V(), _down = V(0, -1, 0);
-  const tipOf = (out) => { _d.copy(_down).applyQuaternion(armR.fore.quaternion); return out.copy(armR.fore.position).addScaledVector(_d, M.B + M.tip); };
-  return { root, hips, torso, neck, head, legs, armR, armL, cig, ember, MAT, M, tipOf };
+  const tipOf = (out) => { _d.copy(_down).applyQuaternion(armR.fore.quaternion); return out.copy(armR.fore.position).addScaledVector(_d, B + M.tip); };
+  return { root, hips: pelvis, torso, neck: need('Neck'), head, legs, armR, armL, cig, ember, MAT, M, tipOf, brows: [NODES.LeftEyebrow, NODES.RightEyebrow].filter(Boolean) };
 }
 function buildMarty(THREE, RoundedBoxGeometry, mergeGeometries, gltf) {
   if (gltf) { try { return martyFromGLB(THREE, gltf); } catch (e) { console.warn('marty.glb could not be rigged, using the built-in Marty', e); } }
@@ -697,6 +722,27 @@ const MARTY = buildMarty(THREE, RoundedBoxGeometry, mergeGeometries, MARTY_GLTF)
 const buddy = MARTY.root; island.add(buddy);
 const hips = MARTY.hips, torso = MARTY.torso, head = MARTY.head;
 const BM = { ember: MARTY.MAT.ember };
+// ---------- clips (src/marty-clips.ts): the studio's joint-angle poses, laid onto this rig ----------
+const CLIPS = !!MARTY.legs.L.boot;           // only the model file has the studio's joints; the built-in blocky Marty keeps the old hand-written moves
+const CL = { id: null, t0: 0, until: 0 };   // a one-shot clip (wave, celebrate, ...) laid over idle and walk
+window.__playClip = (id, s = 2.4) => { CL.id = id; CL.t0 = performance.now(); CL.until = CL.t0 + s * 1000; };
+const mixPose = (a, b, k) => { const o = {}; for (const key in a) o[key] = a[key] + (b[key] - a[key]) * k; return o; };
+const clipFade = () => { const n = performance.now(); return CL.id && n < CL.until ? Math.min(1, (n - CL.t0) / 250, (CL.until - n) / 250) : 0; };
+function livePose(t, ph, walk) {   // idle <-> walk by how fast he is moving; clipPose returns one shared object, so copy before the next call
+  const a = { ...clipPose('idle', t) }; let c = mixPose(a, clipPose('walk', ph / 4.8), walk);
+  const w = clipFade(); if (w > 0) { const b = clipPose(CL.id, (performance.now() - CL.t0) / 1000); c = mixPose(c, b, w * w * (3 - 2 * w)); }
+  return c;
+}
+const _ke = new THREE.Euler(), _kq = new THREE.Quaternion(), _kq2 = new THREE.Quaternion();
+function fkArm(a, sh, sx, sy, sz, ex) {   // shoulder turn + elbow bend, placed exactly like the studio's nested joints
+  a.upper.position.copy(sh); a.upper.quaternion.setFromEuler(_ke.set(sx, sy, sz));
+  a.fore.position.copy(a.elbowOff).applyQuaternion(a.upper.quaternion).add(sh);
+  a.fore.quaternion.copy(a.upper.quaternion).multiply(_kq.setFromEuler(_ke.set(ex, 0, 0)));
+}
+function fkHand(a, sh, sx, sy, sz, ex, hand, elbow) {   // same maths, but only reports where the elbow and hand land (for the IK-driven page canvas)
+  _kq2.setFromEuler(_ke.set(sx, sy, sz)); elbow.copy(a.elbowOff).applyQuaternion(_kq2).add(sh);
+  _kq2.multiply(_kq.setFromEuler(_ke.set(ex, 0, 0))); hand.set(0, -a.B, 0).applyQuaternion(_kq2).add(elbow);
+}
 const SMOKING = true, BUDDY_SCALE = 1;
 const DOWN = new THREE.Vector3(0, -1, 0), _d = new THREE.Vector3(), _p = new THREE.Vector3(), _e = new THREE.Vector3();
 function solveArm(a, S, Hn, pole) {
@@ -718,7 +764,7 @@ const bubble = document.getElementById('bubble'), nametag = document.getElementB
 const now = () => (window.__fakeNow ?? performance.now());
 const DOTS = '<span class="dots"><i></i><i></i><i></i></span>';
 let bubbleMode = 'off', bubbleUntil = 0;
-function think(text, ms = 5200) { bubble.textContent = text; bubble.classList.add('show'); bubbleMode = 'line'; bubbleUntil = now() + ms; }
+function think(text, ms = 5200) { if (FOREST) { window.__forest?.say(text, ms, true); return; } bubble.textContent = text; bubble.classList.add('show'); bubbleMode = 'line'; bubbleUntil = now() + ms; }
 function dots() { bubble.innerHTML = DOTS; bubble.classList.add('show'); bubbleMode = 'dots'; }
 const LINES = [
   "Daily reminder that Graduation is a perfect album.",
@@ -817,32 +863,56 @@ function updateBuddy(t, dt) {
   } else if (phase === 'hold') { heading = angLerp(heading, faceHeading, Math.min(1, dt * 3)); phaseT -= dt; if (phaseT <= 0) startStep(si + 1); }
   buddy.rotation.y = heading;
   walkAmt += ((phase === 'walk' ? 1 : 0) - walkAmt) * Math.min(1, dt * 4); stride += dt * 6.4 * walkAmt;
-  const sw = Math.sin(stride) * .42 * walkAmt;
-  MARTY.legs.L.leg.rotation.x = sw; MARTY.legs.R.leg.rotation.x = -sw;
-  MARTY.legs.L.shin.rotation.x = Math.max(0, sw) * .9 + .04; MARTY.legs.R.shin.rotation.x = Math.max(0, -sw) * .9 + .04;  // knees bend on the back swing
-  const bob = Math.abs(Math.cos(stride)) * .022 * walkAmt;
-  hips.position.y = MARTY.M.hip + bob; torso.position.y = MARTY.M.hip + bob;
-  torso.rotation.y = Math.sin(stride) * .05 * walkAmt;
-  const br = Math.sin(t * 1.6) * .5 + .5; torso.scale.set(1 + br * .006, 1 + br * .01, 1 + br * .008);
-  torso.rotation.z = Math.sin(t * .35) * .012 * (1 - walkAmt) + Math.cos(stride) * .02 * walkAmt;
-  let y = F + (window.__roomDropY || 0);
+  let C = null, rootLift = 0;
+  if (CLIPS) { C = livePose(t, stride, walkAmt); rootLift = C.rootY * MARTY.M.S;
+    hips.position.set(0, C.pelvisY, C.pelvisZ); torso.position.set(0, C.pelvisY, C.pelvisZ);
+    hips.rotation.set(C.pelvisRotX, C.pelvisRotY, C.pelvisRotZ);
+    torso.rotation.set(C.pelvisRotX + C.torsoRotX, C.pelvisRotY + C.torsoRotY, C.pelvisRotZ + C.torsoRotZ); torso.scale.set(1, C.torsoScaleY, 1);
+    for (const [s, hx, hy, hz, kx, bx] of [['L', C.leftHipX, C.leftHipY, C.leftHipZ, C.leftKneeX, C.leftBootX], ['R', C.rightHipX, C.rightHipY, C.rightHipZ, C.rightKneeX, C.rightBootX]]) {
+      const l = MARTY.legs[s]; l.leg.rotation.set(hx, hy, hz); l.shin.rotation.x = kx; l.boot.rotation.x = bx; }
+    MARTY.brows.forEach((b, i) => { b.position.y = i ? C.rightBrowY : C.leftBrowY; b.rotation.z = i ? C.rightBrowRotZ : C.leftBrowRotZ; });
+  } else {
+    const sw = Math.sin(stride) * .42 * walkAmt;
+    MARTY.legs.L.leg.rotation.x = sw; MARTY.legs.R.leg.rotation.x = -sw;
+    MARTY.legs.L.shin.rotation.x = Math.max(0, sw) * .9 + .04; MARTY.legs.R.shin.rotation.x = Math.max(0, -sw) * .9 + .04;  // knees bend on the back swing
+    const bob = Math.abs(Math.cos(stride)) * .022 * walkAmt;
+    hips.position.y = MARTY.M.hip + bob; torso.position.y = MARTY.M.hip + bob;
+    torso.rotation.y = Math.sin(stride) * .05 * walkAmt;
+    const br = Math.sin(t * 1.6) * .5 + .5; torso.scale.set(1 + br * .006, 1 + br * .01, 1 + br * .008);
+    torso.rotation.z = Math.sin(t * .35) * .012 * (1 - walkAmt) + Math.cos(stride) * .02 * walkAmt;
+  }
+  let y = F + (window.__roomDropY || 0) + rootLift;
   if (hop > 0) { hop = Math.max(0, hop - dt * 2.2); const k = Math.sin((1 - hop) * Math.PI); y += k * .12; buddy.scale.set(1 + (1 - k) * hop * .05, 1 - hop * .04 + k * .03, 1); }
   buddy.position.y = y;
   martyShadow.position.set(buddy.position.x, F + .015, buddy.position.z); martyShadow.material.opacity = .6 * (1 - Math.min(1, (window.__roomDropY || 0) / 9));
   const still = 1 - walkAmt;
   const yaw = THREE.MathUtils.clamp(mouse.x * .4, -.4, .4) * still * .6, pitch = THREE.MathUtils.clamp(-mouse.y * .15, -.12, .15) * still;
-  head.rotation.y += (yaw + Math.sin(t * .27) * .06 - head.rotation.y) * Math.min(1, dt * 3);
-  head.rotation.x += (pitch + .03 - head.rotation.x) * Math.min(1, dt * 3);
+  if (CLIPS) { const kk = Math.min(1, dt * 8); head.rotation.x += (pitch + C.headRotX - head.rotation.x) * kk; head.rotation.y += (yaw + C.headRotY - head.rotation.y) * kk; head.rotation.z += (C.headRotZ - head.rotation.z) * kk; }
+  else {
+    head.rotation.y += (yaw + Math.sin(t * .27) * .06 - head.rotation.y) * Math.min(1, dt * 3);
+    head.rotation.x += (pitch + .03 - head.rotation.x) * Math.min(1, dt * 3);
+  }
   // smoking never stops (also while walking)
   if (t > nextPuff) { puffT = .001; nextPuff = t + rr(6, 9); }
   let k = 0;
   if (puffT > 0) { puffT += dt; const p = puffT / 2.4; k = p < .3 ? THREE.MathUtils.smoothstep(p, 0, .3) : p < .6 ? 1 : 1 - THREE.MathUtils.smoothstep(p, .6, 1); if (p >= 1) { puffT = 0; exhale = 1.6; } }
   _hand.lerpVectors(HAND_R_REST, HAND_R_PUFF, k);
   MARTY.ember.material.color.setRGB(2.2 + k * 3, .6 + k * .6, .1);
-  solveArm(MARTY.armR, MARTY.M.shR, _hand, MARTY.M.poleR);
-  const sl = Math.sin(stride) * walkAmt; solveArm(MARTY.armL, MARTY.M.shL, walkAmt > .3 ? _w.set(.24, -.02, sl * .18 + .04) : MARTY.M.pocket, MARTY.M.poleL);
+  if (CLIPS) {
+    fkArm(MARTY.armL, MARTY.M.shL, C.leftShoulderX, C.leftShoulderY, C.leftShoulderZ, C.leftElbowX); MARTY.armL.hand.rotation.z = C.leftHandZ;
+    const a = MARTY.armR; fkArm(a, MARTY.M.shR, C.rightShoulderX, C.rightShoulderY, C.rightShoulderZ, C.rightElbowX); a.hand.rotation.z = C.rightHandZ;
+    if (k > .001) {   // a sip of coffee: blend from the clip's arm to the IK arm that brings the mug up
+      const q0 = a.upper.quaternion.clone(), f0 = a.fore.quaternion.clone(), p0 = a.fore.position.clone();
+      solveArm(a, MARTY.M.shR, _hand, MARTY.M.poleR);
+      const q1 = a.upper.quaternion.clone(), f1 = a.fore.quaternion.clone(), p1 = a.fore.position.clone();
+      a.upper.quaternion.copy(q0).slerp(q1, k); a.fore.quaternion.copy(f0).slerp(f1, k); a.fore.position.copy(p0).lerp(p1, k);
+    }
+  } else {
+    solveArm(MARTY.armR, MARTY.M.shR, _hand, MARTY.M.poleR);
+    const sl = Math.sin(stride) * walkAmt; solveArm(MARTY.armL, MARTY.M.shL, walkAmt > .3 ? _w.set(MARTY.M.walk.x, MARTY.M.walk.y, sl * MARTY.M.walkSwing + MARTY.M.walk.z) : MARTY.M.pocket, MARTY.M.poleL);
+  }
   MARTY.tipOf(MARTY.cig.position);
-  MARTY.ember.getWorldPosition(_w); head.localToWorld(_head.set(.01, .055, .12));
+  MARTY.ember.getWorldPosition(_w); head.localToWorld(_head.copy(MARTY.M.mouth));
   exhale = Math.max(0, exhale - dt);
   for (const sp of smoke) { const u = sp.userData; u.life += dt;
     if (!u.init) { u.init = true; sp.position.copy(_w); sp.position.y += u.life * .16; }
@@ -854,7 +924,7 @@ function updateBuddy(t, dt) {
   if (bubbleMode === 'line' && now() > bubbleUntil) dots();
   // bubble above his head, name tag under his feet (canvas → page coordinates)
   const R = STAGE;
-  head.localToWorld(_head.set(0, .3, 0)); _head.project(camera);
+  head.localToWorld(_head.set(0, MARTY.M.bubbleY, 0)); _head.project(camera);
   bubble.style.transform = `translate(${(R.left + (_head.x * .5 + .5) * R.width).toFixed(1)}px, ${(R.top + (-_head.y * .5 + .5) * R.height).toFixed(1)}px) translate(-50%, -100%)`;
   buddy.localToWorld(_feet.set(0, 0, 0)); _feet.project(camera);
   nametag.style.transform = `translate(${(R.left + (_feet.x * .5 + .5) * R.width).toFixed(1)}px, ${(R.top + (-_feet.y * .5 + .5) * R.height).toFixed(1)}px) translate(-50%, 8px)`;
@@ -892,6 +962,7 @@ new IntersectionObserver(es => es.forEach(e => { heroOn = e.isIntersecting; }), 
 renderer.setAnimationLoop(() => {
   const t = clock.getElapsedTime(), dt = Math.min(.05, t - lastT); lastT = t;
   STAGE = stageEl.getBoundingClientRect();
+  if (FOREST) return;                                                                      // the room is not drawn any more; the forest has its own loop
   const off = !heroOn;
   ['bubble', 'nametag'].forEach(id => { const el = document.getElementById(id); const v = (off || window.__martyOut) ? 'hidden' : ''; if (el.style.visibility !== v) el.style.visibility = v; });
   if (off && !firstFrame) return;                                                          // scrolled away: no 3D work at all
@@ -2172,15 +2243,12 @@ window.__case = k => openCase(k);
   const cigC = pick('Cigarette'); let emberC = null;
   cigC.traverse(o => { if (o.isMesh && o.material === BM.ember) { o.material = BM.ember.clone(); emberC = o; } });
   const R = { hips: pick('Hips'), torso: pick('Torso'), head: pick('Head'), legL: pick('Leg_L'), legR: pick('Leg_R'), shinL: pick('Shin_L'), shinR: pick('Shin_R'),
-    aR: { upper: pick('UpperArm_R'), fore: pick('Forearm_R'), A: RIG.A, B: RIG.B }, aL: { upper: pick('UpperArm_L'), fore: pick('Forearm_L'), A: RIG.A, B: RIG.B } };
+    aR: { upper: pick('UpperArm_R'), fore: pick('Forearm_R'), A: RIG.A, B: RIG.B, elbowOff: MARTY.armR.elbowOff }, aL: { upper: pick('UpperArm_L'), fore: pick('Forearm_L'), A: RIG.A, B: RIG.B, elbowOff: MARTY.armL.elbowOff } };
   const shadow = new THREE.Mesh(new THREE.PlaneGeometry(.8, .8), M.blob.clone()); shadow.rotation.x = -Math.PI / 2; shadow.position.y = .01; M2.add(shadow);
   const POCKET = RIG.pocket;
-  const crown = new THREE.Group(); crown.visible = false; R.head.add(crown);
-  { const gold = new THREE.MeshStandardMaterial({ color: '#e2b34c', metalness: .8, roughness: .32, emissive: '#2a1800' }), gem = new THREE.MeshStandardMaterial({ color: '#c0182a', roughness: .3, emissive: '#3a0008' });
-    const bx = (w, h, d, x, y, z, m = gold) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); crown.add(b); };
-    bx(.5, .09, .04, 0, .55, .25); bx(.5, .09, .04, 0, .55, -.25); bx(.04, .09, .5, .25, .55, 0); bx(.04, .09, .5, -.25, .55, 0);
-    [-.17, 0, .17].forEach((x, i) => bx(.07, i === 1 ? .15 : .11, .04, x, i === 1 ? .66 : .64, .25)); [-.17, .17].forEach(z => bx(.04, .11, .07, .25, .64, z)); [-.17, .17].forEach(z => bx(.04, .11, .07, -.25, .64, z));
-    bx(.06, .06, .03, 0, .56, .275, gem); crown.scale.setScalar(.44); crown.position.set(.005, .02, -.01); crown.rotation.z = -.12; }
+  // his crown (the same pixel-art crown he wins in the hero's dragon quest; it only shows once he has it, and for the Joker portrait)
+  const crown = buildCrown(THREE); crown.scale.setScalar(RIG.crown.s); crown.position.copy(RIG.crown.p); crown.rotation.z = -.12; R.head.add(crown);
+  crown.visible = !!window.__crown; addEventListener('forest:crown', () => { crown.visible = true; });
 
   // ---------- smoke ----------
   const puffs = [], smokeMap = smoke[0] && smoke[0].material.map;
@@ -2189,7 +2257,7 @@ window.__case = k => openCase(k);
   const _w = V3(), _m = V3(), _h = V3();
   function smokeFrame(dt, k, exhaling) {
     if (!puffs.length || !emberC) return;
-    emberC.getWorldPosition(_w); R.head.localToWorld(_m.set(.01, .055, .12));
+    emberC.getWorldPosition(_w); R.head.localToWorld(_m.copy(RIG.mouth));
     emit = Math.min(2, emit + dt * 6);
     for (const sp of puffs) { const u = sp.userData;
       if (u.life >= u.max) { if (emit >= 1) { emit -= 1; u.life = 0; u.puff = exhaling && Math.random() < .65; sp.position.copy(u.puff ? _m : _w); sp.position.z += 40; u.k = k; u.vx = (Math.random() - .5) * .08; u.max = u.puff ? 1.3 + Math.random() * .8 : 1.8 + Math.random() * 1.1; } else { sp.material.opacity = 0; continue; } }
@@ -2222,10 +2290,20 @@ window.__case = k => openCase(k);
   const _v = V3();
   const reachTo = (sx, sy, sh, len = .5) => { tilt.updateMatrixWorld(true); _v.set(sx, -sy, 0); R.torso.worldToLocal(_v); _v.sub(sh); _v.z = Math.max(_v.z, .12); _v.normalize(); return sh.clone().addScaledVector(_v, len); };
   const headTo = (p, sx, sy, x, y, k) => { p.hy = clamp((sx - x) / (k * 6), -.6, .6) - p.ry * .5; p.hx = clamp((sy - (y - k * RIG.headY)) / (k * 9), -.25, .35); };
-  const walkPose = (p, ph, amt) => { const s = Math.sin(ph); p.lL = s * .5 * amt; p.lR = -s * .5 * amt; p.drop -= Math.abs(Math.cos(ph)) * .03 * amt;
+  const _fh = V3(), _fe = V3();
+  function clipFull(p, c, w, both) {   // lay a clip pose onto the page canvas's pose fields (arms become IK targets that land where the clip's elbows and hands do)
+    p.drop += (c.pelvisY - RIG.hip) * w;
+    p.rx += (c.pelvisRotX + c.torsoRotX) * w; p.ry += (c.pelvisRotY + c.torsoRotY) * w; p.rz += (c.pelvisRotZ + c.torsoRotZ) * w;
+    p.hx += c.headRotX * w; p.hy += c.headRotY * w;
+    p.lL = lerp(p.lL, c.leftHipX, w); p.lR = lerp(p.lR, c.rightHipX, w);
+    p.kL = lerp(p.kL ?? knee(p.lL), c.leftKneeX, w); p.kR = lerp(p.kR ?? knee(p.lR), c.rightKneeX, w);
+    fkHand(R.aL, RIG.shL, c.leftShoulderX, c.leftShoulderY, c.leftShoulderZ, c.leftElbowX, _fh, _fe); p.hL.lerp(_fh, w); p.pL = _fe.clone().sub(RIG.shL);
+    if (both) { fkHand(R.aR, RIG.shR, c.rightShoulderX, c.rightShoulderY, c.rightShoulderZ, c.rightElbowX, _fh, _fe); p.hR = RIG.rest.clone().lerp(_fh, w); p.pR = _fe.clone().sub(RIG.shR); }
+  }
+  const walkPose = (p, ph, amt) => { if (CLIPS) { clipFull(p, clipPose('walk', ph / 4.8), amt, false); return; } const s = Math.sin(ph); p.lL = s * .5 * amt; p.lR = -s * .5 * amt; p.drop -= Math.abs(Math.cos(ph)) * .03 * amt;
     p.hL.lerp(V3(.24, -.03, s * .2 + .04), amt); p.rz += Math.cos(ph) * .025 * amt; p.ry += s * .045 * amt; };
   const sitPose = (p, sat) => { const kick = Math.sin(T * 2) * .14; p.drop = RIG.sitDrop * sat; p.lL = lerp(p.lL, -1.5, sat); p.lR = lerp(p.lR, -1.5, sat);
-    p.kL = lerp(knee(p.lL), 1.3 + kick, sat); p.kR = lerp(knee(p.lR), 1.3 - kick, sat); p.sh = .5 * (1 - sat); p.hL = V3(.3, lerp(-.06, -.5, sat), .2); p.pL = V3(.8, .3, -.4); };
+    p.kL = lerp(knee(p.lL), 1.3 + kick, sat); p.kR = lerp(knee(p.lR), 1.3 - kick, sat); p.sh = .5 * (1 - sat); p.hL = L(.3, lerp(-.06, -.5, sat), .2); p.pL = V3(.8, .3, -.4); };
   let curX = -1e4, curY = -1e4, curT = -1e9;
   addEventListener('pointermove', e => { curX = e.clientX; curY = e.clientY; curT = NOW(); }, { passive: true });
   const look = (p, c) => { if (NOW() - curT < 4000 && curX > -1e3) headTo(p, curX, curY, c.x, c.y, c.k); else { p.hy = Math.sin(T * .45) * .18; p.hx = .04 + Math.sin(T * .3) * .03; } };
@@ -2327,9 +2405,9 @@ window.__case = k => openCase(k);
 
   // ---------- room Marty in screen space ----------
   const _f = V3(), _hh = V3();
-  const roomScreen = () => { const S = STAGE; buddy.updateMatrixWorld(true); buddy.localToWorld(_f.set(0, 0, 0)); head.localToWorld(_hh.set(0, .3, 0)); _f.project(camera); _hh.project(camera);
+  const roomScreen = () => { if (FOREST && window.__forest) return window.__forest.screen(); const S = STAGE; buddy.updateMatrixWorld(true); buddy.localToWorld(_f.set(0, 0, 0)); head.localToWorld(_hh.set(0, .3, 0)); _f.project(camera); _hh.project(camera);
     const x = S.left + (_f.x * .5 + .5) * S.width, y = S.top + (-_f.y * .5 + .5) * S.height, hy = S.top + (-_hh.y * .5 + .5) * S.height; return { x, y, px: Math.max(30, y - hy), yaw: buddy.rotation.y - Math.PI / 4 }; };
-  const setRoom = on => { buddy.visible = on; martyShadow.visible = on; window.__martyOut = !on; };
+  const setRoom = on => { window.__forest?.setVisible(on); buddy.visible = on; martyShadow.visible = on; window.__martyOut = !on; };
   let dropT = -1;
   const roomDrop = () => { dropT = 0; window.__roomDropY = 9; };
   const dropTick = dt => { if (dropT < 0) return; dropT += dt; const u = clamp(dropT / .62); window.__roomDropY = 9 * (1 - u * u);
@@ -2450,6 +2528,7 @@ window.__case = k => openCase(k);
     (ACT[s ? s.act : 'edge'] || ACT.stand)(p, c);
     let yaw = p.yaw ?? a.yaw;
     if (A.walkAmt > .02) { walkPose(p, A.walkPh, A.walkAmt); yaw = lerp(yaw, (A.walkDir || 1) * 1.3, A.walkAmt); }
+    { const w = CLIPS ? clipFade() : 0; if (w > 0) clipFull(p, clipPose(CL.id, (NOW() - CL.t0) / 1000), w * w * (3 - 2 * w), true); }
     return { x: a.x, y: a.y, px: a.px, yaw };
   }
 
@@ -2470,7 +2549,7 @@ window.__case = k => openCase(k);
   addEventListener('click', e => { if (A.mode !== 'out' || A.hop) return; const k = A.px;
     if (Math.abs(e.clientX - A.x) > k * .3 || e.clientY > A.y + 4 || e.clientY < A.y - k * 1.02) return;
     if (e.target.closest && e.target.closest('a, button, input, textarea, .tile, .cm, .pc, .ct-card, .hu-pol, .ct-ch, #ctRing')) return;
-    A.bounce = 1; say(CLICK[(A.ci++) % CLICK.length], 3200, 2); }, true);
+    A.bounce = 1; window.__playClip('wave', 2.2); say(CLICK[(A.ci++) % CLICK.length], 3200, 2); }, true);
   window.__marty = {
     say: (t, ms = 3800) => { if (A.mode === 'out') say(t, ms, 2); else if (A.mode === 'room') think(t, ms); },
     ringHover: on => { window.__ringHover = on; if (on && A.at >= 0 && ST[A.at].id === 'ring' && !A.hop) say("Hi. Say hello. He doesn't bite.", 3400, 2); },
@@ -2494,7 +2573,7 @@ window.__case = k => openCase(k);
     mr.render(ms, cam);
     if (!withBubble) { mb.classList.remove('show'); return; }
     thinkTick();
-    R.head.updateMatrixWorld(true); R.head.localToWorld(_h.set(0, .3, 0));
+    R.head.updateMatrixWorld(true); R.head.localToWorld(_h.set(0, RIG.bubbleY, 0));
     if (!TH.w) { TH.w = mb.offsetWidth; TH.h = mb.offsetHeight; }
     // keep clear of the nav: if his head is up under it, the bubble moves beside him instead of above
     const nb = navEl ? Math.max(0, rect(navEl).bottom) + 10 : 10, hx = _h.x, hy = -_h.y;
@@ -2552,7 +2631,7 @@ window.__case = k => openCase(k);
       const cv = document.createElement('canvas'); cv.width = W; cv.height = H; cv.getContext('2d').drawImage(mcv, 0, 0, W, H);
       const url = cv.toDataURL('image/png'); window.__jokerURL = url; QA('.pc-joker-img').forEach(i => i.setAttribute('href', url));
     } catch (e) { /* the joker keeps its plain frame */ }
-    crown.visible = false; shadow.visible = true; puffs.forEach(s => s.visible = true); mr.setPixelRatio(DPRM); BW = BH = 0;
+    crown.visible = !!window.__crown; shadow.visible = true; puffs.forEach(s => s.visible = true); mr.setPixelRatio(DPRM); BW = BH = 0;
   })();
   requestAnimationFrame(frame);
 }
@@ -2629,7 +2708,7 @@ window.__case = k => openCase(k);
   function win() {
     clearInterval(timer); state = 'solved'; elapsed = performance.now() - t0; ui(); say(`Solved in ${fmt(elapsed)} with ${moves} moves.`);
     if (!best || elapsed < best) { best = elapsed; bestEl.textContent = fmt(best); try { localStorage.setItem(KEY, Math.round(best)); } catch (_) {} say(`New best: ${fmt(elapsed)} in ${moves} moves.`); }
-    window.__marty?.say('You actually solved it?!', 3600);
+    window.__marty?.say('You actually solved it?!', 3600); window.__playClip?.('celebrate', 3.2);
     if (!calm) { const a0 = performance.now(), start = az; const spin = now => { const k = Math.min(1, (now - a0) / 1400); az = start + Math.PI * 2 * ease(k); updateCam(); if (k < 1) requestAnimationFrame(spin); }; requestAnimationFrame(spin); }
   }
   async function scramble() {
@@ -2698,6 +2777,13 @@ window.__case = k => openCase(k);
     if (state === 'idle' && !nudged) { nudged = true; window.__marty?.say(pick(NUDGES), 4200); }
     else if (state === 'playing') { window.__marty?.say(pick(TAUNTS), 4200); tauntAt = performance.now() + 14000 + Math.random() * 6000; } }, 1000);
 }
+
+// ---------- the hero playground: a voxel forest, loaded as its own chunk ----------
+if (FOREST) { const host = document.getElementById('forest');
+  import('./forest').then(m => { m.initForest({ host, martyFromGLB, martyUrl: ASSETS + 'marty/marty.glb', reduce: matchMedia('(prefers-reduced-motion: reduce)').matches,
+      openOffer: key => document.querySelector('.tile[data-offer="' + key + '"]')?.click() });
+    const prev = window.__todLights; window.__todLights = th => { prev?.(th); window.__forest?.setTod(th); }; })
+    .catch(e => { console.warn('forest failed to start', e); document.body.classList.remove('has-forest'); }); }
 
 window.__app = { renderer, composer, scene, camera, island, bloom, THREE, buddy, updateBuddy, reveal };
 window.__ready = true;
