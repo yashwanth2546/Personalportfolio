@@ -1,6 +1,6 @@
 // @ts-nocheck
 // The hero playground: a voxel forest you steer Marty through with WASD. Written for this site with three.js.
-// Marty explores a jungle with a fox, finds a sword, and fights a dragon for its chest (which opens the contact form). The same rig and clips as the rest of the page.
+// Marty explores a jungle with a fox, finds a sword, and fights a dragon for its chest (which holds a crown). The same rig and clips as the rest of the page.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clipPose } from './marty-clips';

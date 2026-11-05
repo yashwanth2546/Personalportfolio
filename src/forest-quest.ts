@@ -1,6 +1,6 @@
 // @ts-nocheck
 // The hero's little adventure, built on the forest: a fox companion, a sword stuck in a shrine somewhere in the jungle,
-// a sleeping dragon that will not let Marty near without it, and the chest the dragon guards (it opens the "Let's talk" form).
+// a sleeping dragon that will not let Marty near without it, and the chest the dragon guards (it holds a crown).
 import * as THREE from 'three';
 import { buildCrown } from './crown';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
@@ -195,7 +195,7 @@ export function buildQuest(env) {
     if (cr.t >= 0) { cr.t += dt; const r = getRig(), bx_ = cp.x, bz_ = cp.z, by_ = at(cp.x, cp.z);
       if (cr.t < 1.2) { const k = cr.t / 1.2, e = 1 - (1 - k) * (1 - k); crownProp.position.set(bx_, by_ + .9 + e * 1.9, bz_); crownProp.scale.setScalar(1 + e * 1.2); crownProp.rotation.y = cr.t * 3; }
       else if (cr.t < 2.1 && r) { const k = (cr.t - 1.2) / .9, e = k * k * (3 - 2 * k); r.head.getWorldPosition(_hp); _hp.y += .75; crownProp.position.set(lerp(bx_, _hp.x, e), lerp(by_ + 2.8, _hp.y, e) + Math.sin(Math.PI * k) * .6, lerp(bz_, _hp.z, e)); crownProp.scale.setScalar(lerp(2.2, .8, e)); crownProp.rotation.y = cr.t * 3 + k * 4; }
-      else { cr.t = -1; crownProp.visible = false; wearCrown(); cue('crown'); setStage(4); say('A crown. It suits him.', 2800, true); play('celebrate', 2.2); setTimeout(() => document.querySelector('[data-book]')?.click(), 2600); } }
+      else { cr.t = -1; crownProp.visible = false; wearCrown(); cue('crown'); setStage(4); say('A crown. It suits him.', 2800, true); play('celebrate', 2.2); } }
     if (chest.visible) { const k = Math.min(1, (D.dieT - 1) / .6); chest.scale.setScalar(Math.max(.01, k * (1 + (1 - k) * .3))); cBeam.visible = !st.opened; cLight.intensity = st.opened ? 0 : 3 + Math.sin(t * 4) * .6; chest.children[1].rotation.x = st.opened ? -.9 : 0; }
     // ---- the fox ----
     const hx = Math.sin(mv.heading), hz = Math.cos(mv.heading), fighting = D.mode !== 'sleep' && !D.dead && dd < 20, back = fighting ? 5 : 2.3;

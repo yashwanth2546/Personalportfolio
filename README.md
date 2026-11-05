@@ -17,7 +17,7 @@ npm run preview  # serve dist/ locally
 
 ## Hero playground
 
-`src/forest.ts` is the hero: a 3D voxel jungle that fills the screen. Walk Nathan Drake with WASD (relative to the camera; hold the right mouse button and drag to turn it, wheel zooms once the forest is focused; Shift runs, E acts, Q waves, a joystick on touch). A fox follows him around. The quest lives in `src/forest-quest.ts`: find the sword on its shrine in the jungle, wake the dragon at its lair (left click or E swings, F rolls, jump clears the fire, three hearts), then open the chest, which opens the contact form. `FOREST` in `src/main.ts` switches the whole thing off to bring the old isometric room back.
+`src/forest.ts` is the hero: a 3D voxel jungle that fills the screen. Walk Nathan Drake with WASD (relative to the camera; hold the right mouse button and drag to turn it, wheel zooms once the forest is focused; Shift runs, E acts, Q waves, a joystick on touch). A fox follows him around. The quest lives in `src/forest-quest.ts`: find the sword on its shrine in the jungle, wake the dragon at its lair (left click or E swings, F rolls, jump clears the fire, three hearts), then open the chest for the crown.
 
 ## Nathan Drake's model
 
