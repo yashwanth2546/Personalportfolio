@@ -675,7 +675,7 @@ const loadProp = ([name, x, z, ry, h, y = 0]) => new Promise(res => gltfL.load(A
   const b2 = new THREE.Box3().setFromObject(o), c = b2.getCenter(new THREE.Vector3());
   const wrap = new THREE.Group(); o.position.set(-c.x, -b2.min.y, -c.z); wrap.add(o); wrap.position.set(x, F + y, z); wrap.rotation.y = ry; wrap.name = name;
   propRoot.add(wrap); res(wrap); }, undefined, () => res(null)));
-const propsReady = Promise.all(PROPS.map(loadProp)).then(list => {
+const propsReady = Promise.all((FOREST ? [] : PROPS).map(loadProp)).then(list => {
   const cab = list[4]; if (cab) { const b = new THREE.Box3().setFromObject(cab); island.add(at(turntable, XW + .3, b.max.y, -.85, Math.PI / 2)); }
   bakeShadows(); return list; });
 
@@ -1370,12 +1370,13 @@ function art(c) {
       <text x="125" y="287" text-anchor="middle" font-size="5.6" letter-spacing="2.6" fill="#151310" opacity=".6" style="${SERIF}">JACK OF ALL TRADES · No. 001</text><path d="M78 293h94" stroke="#151310" stroke-width=".6"/></svg>`;
   }
   if (c.art === 'joker') {
+    const jk = 'jk' + (window.__jk = (window.__jk || 0) + 1);   // each rendering needs its own ids
     const col = (ch, i) => `<text x="17" y="${34 + i * 15}" text-anchor="middle" font-size="14" font-weight="700" fill="${i % 2 ? '#151310' : '#b01e22'}" style="${SERIF}">${ch}</text>`;
     const L = [...'JOKER'].map(col).join('');
-    return `<svg viewBox="0 0 250 350" aria-hidden="true"><defs><clipPath id="pc-jk"><ellipse cx="125" cy="168" rx="70" ry="94"/></clipPath><radialGradient id="pc-jkbg" cx=".5" cy=".42" r=".7"><stop offset="0" stop-color="#f06a3c"/><stop offset=".6" stop-color="#a3201c"/><stop offset="1" stop-color="#4a0b0d"/></radialGradient></defs>
+    return `<svg viewBox="0 0 250 350" aria-hidden="true"><defs><clipPath id="pc-jk-${jk}"><ellipse cx="125" cy="168" rx="70" ry="94"/></clipPath><radialGradient id="pc-jkbg-${jk}" cx=".5" cy=".42" r=".7"><stop offset="0" stop-color="#f06a3c"/><stop offset=".6" stop-color="#a3201c"/><stop offset="1" stop-color="#4a0b0d"/></radialGradient></defs>
       <rect width="250" height="350" fill="#fbf8f0"/>${L}<g transform="rotate(180 125 175)">${L}</g>
-      <ellipse cx="125" cy="168" rx="70" ry="94" fill="url(#pc-jkbg)"/><g clip-path="url(#pc-jk)" opacity=".28">${Array.from({ length: 18 }, (_, i) => { const a = i / 18 * Math.PI * 2, b = a + .09; return `<path d="M125 168L${(125 + Math.cos(a) * 140).toFixed(1)} ${(168 + Math.sin(a) * 140).toFixed(1)}L${(125 + Math.cos(b) * 140).toFixed(1)} ${(168 + Math.sin(b) * 140).toFixed(1)}Z" fill="#ffd27a"/>`; }).join('')}</g>
-      <image class="pc-joker-img" clip-path="url(#pc-jk)" x="45" y="64" width="160" height="200" preserveAspectRatio="xMidYMid slice" href=""/>
+      <ellipse cx="125" cy="168" rx="70" ry="94" fill="url(#pc-jkbg-${jk})"/><g clip-path="url(#pc-jk-${jk})" opacity=".28">${Array.from({ length: 18 }, (_, i) => { const a = i / 18 * Math.PI * 2, b = a + .09; return `<path d="M125 168L${(125 + Math.cos(a) * 140).toFixed(1)} ${(168 + Math.sin(a) * 140).toFixed(1)}L${(125 + Math.cos(b) * 140).toFixed(1)} ${(168 + Math.sin(b) * 140).toFixed(1)}Z" fill="#ffd27a"/>`; }).join('')}</g>
+      <image class="pc-joker-img" clip-path="url(#pc-jk-${jk})" x="45" y="64" width="160" height="200" preserveAspectRatio="xMidYMid slice" href=""/>
       <ellipse cx="125" cy="168" rx="70" ry="94" fill="none" stroke="#d4a548" stroke-width="2.2"/><ellipse cx="125" cy="168" rx="75" ry="99" fill="none" stroke="#151310" stroke-width=".7"/>
       <ellipse cx="125" cy="168" rx="79" ry="103" fill="none" stroke="#151310" stroke-width="1.4" stroke-dasharray=".1 4" stroke-linecap="round" opacity=".6"/>
       ${[[125, 62], [125, 274], [46, 168], [204, 168]].map(([x, y]) => `<use href="#s-diamond" x="${x - 5}" y="${y - 5}" width="10" height="10" fill="#b01e22"/>`).join('')}

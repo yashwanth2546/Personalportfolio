@@ -1399,3 +1399,9 @@ body.has-forest .hero > .copy a, body.has-forest .hero > .copy button { pointer-
 .fq-pin b { background: #ffd23f; color: #1a1408; }
 @media (max-width: 900px) { .fquest { top: 74px; padding: 9px 11px; font-size: 12px; } }
 .hu-pol img[data-ph="me"] { object-position: 50% 30%; }
+
+/* the hero is only the playground now, so on phones it fills the whole first screen too */
+@media (max-width: 900px) {
+  body.has-forest .hero { min-height: max(100svh, 640px); }
+  body.has-forest .forest { position: absolute; inset: 0; height: auto; margin: 0; }
+}
