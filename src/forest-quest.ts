@@ -22,7 +22,7 @@ export function buildQuest(env) {
   hud.innerHTML = '<div class="fq-k">Quest</div><div class="fq-t"></div><div class="fq-h" aria-label="Hearts"><i>♥</i><i>♥</i><i>♥</i></div><div class="fq-d" hidden><span>Dragon</span><b><i></i></b></div><button class="fq-r" type="button" hidden>Play again</button>';
   host.appendChild(hud);
   const qT = hud.querySelector('.fq-t'), qH = [...hud.querySelectorAll('.fq-h i')], qD = hud.querySelector('.fq-d'), qDI = qD.querySelector('b i'), qR = hud.querySelector('.fq-r');
-  const TXT = ['Explore the jungle. Somewhere in it, a sword.', 'Sword in hand. Something big sleeps in the jungle to the east.', 'Fight! Click to swing, F to roll, jump over the fire.', 'Dragon down. Open the treasure chest.', 'Crown claimed. Marty is available for hire.'];
+  const TXT = ['Explore the jungle. Somewhere in it, a sword.', 'Sword in hand. Something big sleeps in the jungle to the east.', 'Fight! Click to swing, F to roll, jump over the fire.', 'Dragon down. Open the treasure chest.', 'Crown claimed. Nathan Drake is available for hire.'];
   const paint = () => { qT.textContent = TXT[st.stage]; qH.forEach((h, i) => h.classList.toggle('off', i >= st.hearts)); qD.hidden = !(st.stage === 2); qDI.style.width = (st.hp / HP * 100) + '%'; qR.hidden = st.stage < 3; hud.dataset.stage = st.stage; };
   const setStage = n => { st.stage = n; paint(); };
 
@@ -111,7 +111,7 @@ export function buildQuest(env) {
   /* ---- fighting ---- */
   const kick = { x: 0, z: 0 }; let invuln = 0, swingCd = 0, hitAt = 0, dodgeCd = 0;
   const hurtMarty = (fromX, fromZ) => { if (now() < invuln) return; invuln = now() + 1400; st.hearts--; const d = Math.hypot(mv.x - fromX, mv.z - fromZ) || 1; kick.x = (mv.x - fromX) / d * 9; kick.z = (mv.z - fromZ) / d * 9; paint();
-    if (st.hearts <= 0) { say('Marty is out cold. Back to camp.', 2800, true); setTimeout(() => { mv.x = env.SPAWN.x; mv.z = env.SPAWN.z; mv.y = topAt(mv.x, mv.z); st.hearts = 3; paint(); D.mode = 'sleep'; D.t = 0; }, 900); } else say(['Ow.', 'That was hot.', 'Rude.'][st.hearts % 3], 1400, true); };
+    if (st.hearts <= 0) { say('Nathan is out cold. Back to camp.', 2800, true); setTimeout(() => { mv.x = env.SPAWN.x; mv.z = env.SPAWN.z; mv.y = topAt(mv.x, mv.z); st.hearts = 3; paint(); D.mode = 'sleep'; D.t = 0; }, 900); } else say(['Ow.', 'That was hot.', 'Rude.'][st.hearts % 3], 1400, true); };
   // the dragon is hit where it actually is: a few spheres on its body, neck, head and tail (measured from the sword, not from its middle)
   let HB = () => [[body, 0, 2.3, 0, 2.1], [neck, 0, .6, .5, 1.3], [head, 0, 0, .6, 1.4], [tail[1], 0, 0, -.6, 1.2], [tail[3], 0, 0, -.6, 1], [tail[5], 0, 0, -.6, .9]];
   const _hp = new THREE.Vector3();

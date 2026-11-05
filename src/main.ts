@@ -15,7 +15,8 @@ import { FACES } from './data/faces';
 import { clipPose } from './marty-clips';
 import { PHOTOS } from './data/photos';
 
-const MAIL = ''; // ← your email address, e.g. 'hello@yourdomain.com'. Every "Let's talk", "Say hello" and collab button uses it.
+const MAIL = 'yashwant.k.me@gmail.com'; // every "Let's talk", "Say hello" and collab button uses it.
+const gmail = su => `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(MAIL)}&su=${encodeURIComponent(su)}`; // a Gmail compose window to MAIL
 /* =========================================================
    Page: stage tracking, IST clock, headline weight hover, button fill
    ========================================================= */
@@ -372,7 +373,7 @@ function buildMarty(THREE, RoundedBoxGeometry, mergeGeometries, gltf) {
    One WebGL canvas that lives inside the hero window, so the page scrolls it natively (no per-frame
    clipping, no full-screen canvas). Shadows are baked once and only redrawn when the light changes.
    The furniture is CC0 from Poly Haven (polyhaven.com): lounge chairs, coffee table, sideboard, shelves,
-   plants, stools, lamps, bottles, his cigarette pack and lighter. The guitars, amp, gaming desk, bar,
+   plants, stools, lamps and bottles. The guitars, amp, gaming desk, bar,
    turntable, posters and neon are built here. Marty is built in code (buildMarty, above).
    ========================================================= */
 const ASSETS = import.meta.env.BASE_URL + 'assets/';
@@ -567,7 +568,7 @@ const screenTex = kind => canvasTex(1024, 576, (g, w, h) => {
     g.globalAlpha = 1; g.fillStyle = '#ff3b30'; g.fillRect(w * .46, h * .55, 3, h * .45);
   } else { // a music app, his rotation
     g.fillStyle = '#121212'; g.fillRect(0, 0, w, h); const ag = g.createLinearGradient(60, 60, 330, 330); ag.addColorStop(0, '#ff4500'); ag.addColorStop(1, '#2a0e05'); g.fillStyle = ag; g.fillRect(60, 60, 270, 270);
-    g.fillStyle = '#fff'; g.textAlign = 'left'; g.font = '700 34px Arial'; g.fillText('Late night rotation', 370, 110); g.font = '400 20px Arial'; g.fillStyle = '#9a9a9a'; g.fillText('Marty · 4 songs on repeat', 370, 146);
+    g.fillStyle = '#fff'; g.textAlign = 'left'; g.font = '700 34px Arial'; g.fillText('Late night rotation', 370, 110); g.font = '400 20px Arial'; g.fillStyle = '#9a9a9a'; g.fillText('Nathan · 4 songs on repeat', 370, 146);
     [['Runaway', 'Kanye West'], ['Sicko Mode', 'Travis Scott'], ['After Party', 'Don Toliver'], ['No Role Modelz', 'J. Cole']].forEach(([s, a], i) => { const y = 220 + i * 62; g.fillStyle = i === 0 ? '#ff4500' : '#fff'; g.font = '600 24px Arial'; g.fillText(s, 370, y); g.fillStyle = '#8a8a8a'; g.font = '400 19px Arial'; g.fillText(a, 370, y + 26); });
     g.fillStyle = '#333'; g.fillRect(60, h - 70, w - 120, 6); g.fillStyle = '#ff4500'; g.fillRect(60, h - 70, (w - 120) * .38, 6);
   } });
@@ -663,8 +664,6 @@ const PROPS = [
   ['desk_lamp_arm_01', -1.45, ZW + .45, .5, .55, .77],
   ['potted_plant_04', .25, ZW + .32, 0, .2, .77],
   ['boombox', XW + .22, 1.2, Math.PI / 2 + .1, .2, 1.51],
-  ['cigarette_pack', .85, 1.0, .4, .075, .4],
-  ['vintage_lighter', 1.0, .9, -.6, .055, .4],
   ['rubber_duck_toy', .1, ZW + .55, .5, .09, .77],
   ['wine_bottles_01', BAR_X + .65, ZW + .3, 0, .33, .9],
 ];
@@ -843,7 +842,7 @@ let spinYaw = 0, spinning = false, zoomK = 1, zoomTo = 1;
   const up = e => { if (!pts.has(e.pointerId)) return; pts.delete(e.pointerId); if (pts.size < 2) pinch0 = 0; if (!pts.size) spinning = false;
     if (e.type === 'pointerup' && Math.hypot(e.clientX - sx, e.clientY - sy) < 8) { const n = performance.now(); if (n - lastTap < 300) { zoomTo = 1; spinYaw = 0; } lastTap = n; } };
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
-  if (matchMedia('(hover: none)').matches) document.getElementById('psst').innerHTML = '<b>Psst.</b> Tap Marty, his guitars or the bar. Swipe sideways to look around, pinch to zoom.'; }
+  if (matchMedia('(hover: none)').matches) document.getElementById('psst').innerHTML = '<b>Psst.</b> Tap Nathan, his guitars or the bar. Swipe sideways to look around, pinch to zoom.'; }
 addEventListener('pointermove', e => { mouse.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); }, { passive: true });
 
 // moving contact shadow (Marty doesn't cast into the baked shadow map)
@@ -916,7 +915,7 @@ function updateBuddy(t, dt) {
   exhale = Math.max(0, exhale - dt);
   for (const sp of smoke) { const u = sp.userData; u.life += dt;
     if (!u.init) { u.init = true; sp.position.copy(_w); sp.position.y += u.life * .16; }
-    if (u.life > u.max) { u.life = 0; u.puff = exhale > 0 && rand() < .5; sp.position.copy(u.puff ? _head : _w); u.max = u.puff ? rr(1.6, 2.4) : rr(3.4, 4.6); }
+    if (u.life > u.max) { u.life = 0; u.puff = false; sp.position.copy(_w); u.max = u.puff ? rr(1.6, 2.4) : rr(3.4, 4.6); }
     const p = u.life / u.max; sp.position.y += dt * (u.puff ? .12 : .16);
     sp.position.x += Math.sin(t * 1.3 + u.seed) * dt * .03 + (u.puff ? dt * .06 : 0); sp.position.z += Math.cos(t * 1.1 + u.seed) * dt * .03 + (u.puff ? dt * .08 : 0);
     const s = (u.puff ? .06 : .022) + p * (u.puff ? .28 : .2); sp.scale.set(s, s, s);
@@ -982,7 +981,7 @@ renderer.setAnimationLoop(() => {
    ========================================================= */
 const loaderEl = document.getElementById('loader');
 const loadBar = document.getElementById('bar'), pct = document.getElementById('pct'), note = document.getElementById('loadNote');
-const NOTES = ["Marty's lighting up", 'Tuning the guitars', 'Pouring something expensive', 'Dimming the lights'];
+const NOTES = ["Nathan's making coffee",'Tuning the guitars', 'Pouring something expensive', 'Dimming the lights'];
 const MIN_MS = 1700, MAX_MS = 9000, t0 = performance.now();
 let shown = 0, fontsOk = false; document.fonts.ready.then(() => fontsOk = true);
 (function prog() {
@@ -1007,7 +1006,7 @@ function reveal() {
    SECTION 2 · Engines: marquee, highlight-wipe heading, cursor dots, bento, detail pages
    ========================================================= */
 // marquee
-{ const items = ['Video editing', 'Motion graphics', 'Web development', 'Cyber security', 'Two startup agencies', 'Jack of all trades', 'Cut it', 'Animate it', 'Build it', 'Lock it down'];
+{ const items = ['Zerodha', 'Nas Daily', 'EnviroManly', 'Enigma Collectives', 'Withered Hills', '100M+ views', 'Two startup agencies', 'Jack of all trades'];
   const html = items.map(t => `<span>${t}</span>`).join(''); document.getElementById('mqTrack').innerHTML = html + html; }
 
 // highlight-marker heading: split into visual lines, then wipe white + orange bars across each line
@@ -1120,6 +1119,8 @@ dotsFor(document.getElementById('dots'), document.getElementById('engines'));
 // ---------- offer detail pages ----------
 const STEPS = a => `<div class="d-steps">${a.map(([b, s]) => `<div class="d-step"><b>${b}</b><span>${s}</span></div>`).join('')}</div>`;
 const LIST = a => `<ul class="d-list">${a.map(([t, e]) => `<li>${t} <em>${e}</em></li>`).join('')}</ul>`;
+// software tiles: [letters, name, tile colour, letter colour]. Letters on a colour, not the vendors' logos.
+const TOOLS = a => `<div class="d-tools">${a.map(([ab, n, bg, fg]) => `<span class="d-tool"><i style="--bg:${bg};--fg:${fg}" aria-hidden="true">${ab}</i>${n}</span>`).join('')}</div>`;
 const OFFERS = {
   content: { num: '01', crumb: '01 · Video', kicker: 'Video Editing', title: 'Raw footage,<br><em>real story.</em>',
     promise: 'Pacing, sound and the cuts that keep people watching. I take messy footage and find the version of it that holds attention from the first second to the last.',
@@ -1136,7 +1137,7 @@ const OFFERS = {
       ['What it is', `<p>Editing is where a pile of footage becomes something people actually watch. I handle the whole post-production pass: <strong>structure, pacing, sound and finish.</strong></p><p>Short-form for the scroll, long-form for the people who stay, and promos in between.</p>`],
       ['What I do', LIST([['Story and structure: finding the version worth watching', 'Always'], ['Cutting for rhythm, with a strong opening and a clean ending', 'Every edit'], ['Sound: dialogue clean-up, music, effects and mix', 'Included'], ['Captions and on-screen text', 'On request'], ['Colour and finishing', 'Included'], ['Exports for every platform and aspect ratio', 'Every project']])],
       ['How it works', STEPS([['Step 1', 'You send the footage and a short brief: the goal, the audience and a reference or two you like.'], ['Step 2', 'A rough cut to check structure and tone before any polish.'], ['Step 3', 'Notes from you, then the fine cut: sound, captions, colour.'], ['Step 4', 'Final files in every format you need.']])],
-      ['Placeholder', `<p class="d-note">Placeholder copy: swap in your real tools, turnaround and examples.</p>`]
+      ['Software I use', TOOLS([['Pr', 'Premiere Pro', '#00005b', '#9999ff'], ['Ae', 'After Effects', '#00005b', '#d291ff'], ['Dv', 'DaVinci Resolve', '#1b1b1b', '#ff7a45']])]
     ] },
   podcast: { num: '02', crumb: '02 · Motion', kicker: 'Motion Graphics', title: 'Everything moves<br>on <em>purpose.</em>',
     promise: 'Titles, kinetic type and animated explainers that make an idea move and stick. Motion should explain something, not just decorate it.',
@@ -1156,7 +1157,7 @@ const OFFERS = {
       ['What it is', `<p>Motion graphics are how a message gets <strong>noticed, understood and remembered.</strong> I design and animate the pieces: titles, type, shapes and the transitions that tie a video together.</p><p>Standalone animations, or the finishing layer on top of an edit.</p>`],
       ['What I make', LIST([['Kinetic typography and animated titles', 'Type'], ['Animated explainers and product intros', 'Explain'], ['Logo stings and lower thirds', 'Brand'], ['Transitions and motion for edited video', 'Polish'], ['Social cut-downs in vertical, square and wide', 'Formats']])],
       ['How it works', STEPS([['Step 1', 'Storyboard and style frames: the look is agreed before anything moves.'], ['Step 2', 'Animatic, then animation: timing first, then the polish and the easing.'], ['Step 3', 'Render and delivery in every aspect ratio you need.']])],
-      ['Placeholder', `<p class="d-note">Placeholder copy: swap in your real tools, turnaround and examples.</p>`]
+      ['Software I use', TOOLS([['Ae', 'After Effects', '#00005b', '#d291ff'], ['Ai', 'Illustrator', '#330000', '#ff9a00'], ['Bl', 'Blender', '#265787', '#f5792a'], ['Fg', 'Figma', '#1e1e1e', '#f24e1e']])]
     ],
     init(root) {
       const w = root.querySelector('[data-wave]'); for (let i = 0; i < 64; i++) { const h = 14 + Math.abs(Math.sin(i * .41) * 70 + Math.sin(i * 1.3) * 30); w.insertAdjacentHTML('beforeend', `<i style="--h:${Math.min(100, h).toFixed(0)}%;--d:${(i % 11) / 11}"></i>`); }
@@ -1171,7 +1172,7 @@ const OFFERS = {
       ['What I build', `<div class="d-chips"><span>Landing pages</span><span>Portfolio sites</span><span>Animated interfaces</span><span>Interactive 3D</span><span>Responsive layouts</span><span>Performance tuning</span></div>`],
       ['How it works', STEPS([['Step 1', 'Wireframes and the look: layout, type and colour agreed first.'], ['Step 2', 'The build, in small pieces you can see as they land.'], ['Step 3', 'Review on a live preview link, then a round of fixes.'], ['Step 4', 'Launch and a handover, so you are never stuck.']])],
       ['Work so far', LIST([['Neweralist Media: the company website, live at neweralistmedia.com', 'Designed and built'], ['Deep Impact: a website design for a protein brand', 'In progress'], ['Raja Harsha: a portfolio website design', 'Design']])],
-      ['Placeholder', `<p class="d-note">Placeholder copy: swap in your real stack, turnaround and more examples.</p>`]
+      ['Software I use', TOOLS([['VS', 'VS Code', '#007acc', '#ffffff'], ['Vt', 'Vite', '#1e1b3a', '#bd34fe'], ['TS', 'TypeScript', '#3178c6', '#ffffff'], ['3js', 'three.js', '#111111', '#ffffff'], ['Fg', 'Figma', '#1e1e1e', '#f24e1e'], ['GH', 'GitHub', '#0d1117', '#ffffff']])]
     ] },
   paid: { num: '04', crumb: '04 · Security', kicker: 'Cyber Security', title: 'Break it<br>to <em>fix it.</em>',
     promise: 'Security is a mindset before it is a toolset. I am an enthusiast: genuinely curious about how things break, and I bring that habit to everything I build.',
@@ -1180,11 +1181,11 @@ const OFFERS = {
       ['What it is', `<p>I think about <strong>how a thing could be abused</strong> while I am building it, not after it ships. That habit costs little at the start and a lot to bolt on later.</p>`],
       ['What that looks like', LIST([['Thinking through how a project could be attacked before the first line of code', 'Early'], ['Validating inputs and keeping dependencies up to date', 'Always'], ['Sensible headers, permissions and secrets handling', 'Every build'], ['Staying curious about how attacks evolve', 'Ongoing']])],
       ['An honest limit', `<div class="d-guar"><b>Enthusiast, not auditor</b>I will tell you what I know, what I am still learning, and when you need a dedicated security professional.</div>`],
-      ['Placeholder', `<p class="d-note">Placeholder copy: swap in your real focus areas, certifications and write-ups.</p>`]
+      ['Software I use', TOOLS([['Ka', 'Kali Linux', '#101723', '#367bf0'], ['Bu', 'Burp Suite', '#ff6633', '#ffffff']])]
     ] },
   full: { num: '×2', crumb: '×2 · Co-founder', kicker: 'The Co-founder Hat', title: 'Two agencies.<br><em>One of me.</em>',
     promise: 'I co-founded two startup agencies, so I have sat on both sides of the table: the person briefing the work and the person who has to deliver it.',
-    stats: [['2', 'startup agencies co-founded'], ['4', 'crafts under one roof'], ['1', 'person to talk to']],
+    stats: [['2', 'startup agencies co-founded'], ['5', 'client brands served'], ['1', 'person to talk to']],
     show: `<div class="sc-h"><h4>Jump to a craft</h4><span>One person behind all four</span></div>
       <div class="eng4">
         <button class="card" data-go="content"><small>01</small><b>Video Editing</b></button>
@@ -1194,9 +1195,8 @@ const OFFERS = {
       </div>`,
     secs: [
       ['What it means', `<p>Running agencies teaches you what clients actually need: <strong>clear scope, honest timelines and someone accountable.</strong> That shapes how I take on every project, agency or not.</p>`],
-      ['What I bring to a team', LIST([['Delivery: scoping work and shipping it on time', 'Agency-tested'], ['Range: video, motion, web and security in one head', 'Four crafts'], ['Communication: one clear point of contact', 'No hand-offs'], ['Taste: knowing when something is finished', 'Always']])],
-      ['The agencies', LIST([['Neweralist Media: a B2B media house for founders, investors and M&A advisors', 'Co-founder'], ['Ascent Studio, formerly Vantix Growth', 'Co-founder']])],
-      ['Placeholder', `<p class="d-note">Placeholder copy: say what Ascent Studio does and what your role is at each agency.</p>`]
+      ['What I bring to a team', LIST([['Delivery: scoping work and shipping it on time', 'Agency-tested'], ['Range: one person who can take a job from brief to launch', 'One head'], ['Communication: one clear point of contact', 'No hand-offs'], ['Taste: knowing when something is finished', 'Always']])],
+      ['The agencies', LIST([['Neweralist Media: a B2B media house for founders, investors and M&A advisors', 'Co-founder'], ['Ascent Studio, formerly Vantix Growth', 'Co-founder']])]
     ],
     init(root) { root.querySelectorAll('[data-go]').forEach(b => b.onclick = () => goTo(b.dataset.go)); } },
 };
@@ -1534,28 +1534,28 @@ window.__lab = { get cur() { return cur; }, get L() { return L; }, get hover() {
 {
 const labPin = document.querySelector('.lab-pin');
 const SAMPLE = false; // set true to show "Sample project" badges and a note on placeholder cards
-const BOOK_URL = MAIL ? `mailto:${MAIL}?subject=${encodeURIComponent('Hello from your portfolio')}` : '#'; // every "Let's talk" button uses this: set MAIL (top of file) or paste a booking link here
+const BOOK_URL = MAIL ? gmail('Hello Yashwanth') : '#'; // every "Let's talk" button uses this
 const applyBook = (root = document) => root.querySelectorAll('[data-book]').forEach(a => { a.href = BOOK_URL; if (/^https?:/.test(BOOK_URL)) { a.target = '_blank'; a.rel = 'noopener'; } else if (BOOK_URL === '#') a.addEventListener('click', e => { e.preventDefault(); window.__marty?.say('He has not added his email yet. Check back soon.', 4200); }); });
 const CASES = [
   { k: 'yt1', name: 'Change How You Do Content', sector: 'YouTube', credit: 'Channel: Somrat Dutta', engine: 'Video Editing · Motion Graphics', pc: '#ff4500', tags: ['Video editing', 'Motion graphics', 'YouTube'],
-    res: 'A long-form YouTube video from the agency I co-founded.',
-    sum: 'A team project from the agency I co-founded: video editing and motion graphics on a long-form YouTube video. Full title: “Give me 9.28 Min, I’ll Completely CHANGE how you do CONTENT forever!”',
+    res: 'A long-form YouTube video, edited and animated by me.',
+    sum: 'I did the video editing and motion graphics on this long-form YouTube video. Full title: “Give me 9.28 Min, I’ll Completely CHANGE how you do CONTENT forever!”',
     video: { type: 'youtube', id: 'kMJduBqtMRs', url: 'https://www.youtube.com/watch?v=kMJduBqtMRs' }, stats: [], brief: [], did: [] },
   { k: 'ig1', name: 'Reel 01', sector: 'Instagram Reel', credit: 'Account: zeeljain', engine: 'Video Editing · Motion Graphics', pc: '#3b2335', tags: ['Video editing', 'Motion graphics', 'Reel'],
-    res: 'A short-form vertical video from the agency I co-founded.',
-    sum: 'A team project from the agency I co-founded: video editing and motion graphics on a short-form reel.',
-    video: { type: 'reel', src: 'assets/work/reel-01.mp4', url: 'https://www.instagram.com/reel/DbSMgbNqXLY/', account: 'zeeljain', caption: 'Video editing and motion graphics by our team.' }, stats: [], brief: [], did: [] },
+    res: 'A short-form vertical video, edited and animated by me.',
+    sum: 'I did the video editing and motion graphics on this short-form reel.',
+    video: { type: 'reel', src: 'assets/work/reel-01.mp4', url: 'https://www.instagram.com/reel/DbSMgbNqXLY/', account: 'zeeljain', caption: 'Video editing and motion graphics by me.' }, stats: [], brief: [], did: [] },
   { k: 'ig2', name: 'Reel 02', sector: 'Instagram Reel', credit: 'Account: zeeljain', engine: 'Video Editing · Motion Graphics', pc: '#8a6a3f', tags: ['Video editing', 'Motion graphics', 'Reel'],
-    res: 'A short-form vertical video from the agency I co-founded.',
-    sum: 'A team project from the agency I co-founded: video editing and motion graphics on a short-form reel.',
-    video: { type: 'reel', src: 'assets/work/reel-02.mp4', url: 'https://www.instagram.com/reel/DbCZGJqxty3/', account: 'zeeljain', caption: 'Video editing and motion graphics by our team.' }, stats: [], brief: [], did: [] },
+    res: 'A short-form vertical video, edited and animated by me.',
+    sum: 'I did the video editing and motion graphics on this short-form reel.',
+    video: { type: 'reel', src: 'assets/work/reel-02.mp4', url: 'https://www.instagram.com/reel/DbCZGJqxty3/', account: 'zeeljain', caption: 'Video editing and motion graphics by me.' }, stats: [], brief: [], did: [] },
   { k: 'yt2', name: 'Zero to ₹5L/Month in Editing', sector: 'YouTube', credit: 'Channel: Somrat Dutta', engine: 'Video Editing · Motion Graphics', pc: '#3245ff', tags: ['Video editing', 'Motion graphics', 'YouTube'],
-    res: 'A long-form YouTube video from the agency I co-founded.',
-    sum: 'A team project from the agency I co-founded: video editing and motion graphics on a long-form YouTube video. Full title: “The ONLY Guide from ZERO to ₹5L/Month in Editing you need to watch”',
+    res: 'A long-form YouTube video, edited and animated by me.',
+    sum: 'I did the video editing and motion graphics on this long-form YouTube video. Full title: “The ONLY Guide from ZERO to ₹5L/Month in Editing you need to watch”',
     video: { type: 'youtube', id: 'hZe9fHhkaO8', url: 'https://www.youtube.com/watch?v=hZe9fHhkaO8' }, stats: [], brief: [], did: [] },
   { k: 'nws', name: 'Neweralist Media Website', sector: 'Live site', engine: 'Web Design & Development', pc: '#0f1620', tags: ['Web development', 'Front-end', 'Live site'],
-    res: 'The website for the B2B media house I co-founded: services, case studies, process and FAQs on a single page.',
-    sum: 'The website for Neweralist Media, the B2B media house I co-founded. I designed and built it. One page carries the services, case studies, process, FAQs and contact, plus a careers modal.',
+    res: 'A B2B media house website I designed and built: services, case studies, process and FAQs on a single page.',
+    sum: 'The website for Neweralist Media, a B2B media house. I designed and built it. One page carries the services, case studies, process, FAQs and contact, plus a careers modal.',
     shot: { img: 'assets/work/neweralist.jpg', url: 'https://www.neweralistmedia.com/' }, stats: [], brief: [], did: [] },
   { k: 'deep', name: 'Deep Impact', sector: 'Client project · in progress', badge: 'In progress', engine: 'Web Design', pc: '#101214', tags: ['In progress', 'Web design', 'Hero'],
     res: 'A bold hero for a protein brand: oversized type behind the product bags. A client project that is still in progress.',
@@ -1758,7 +1758,7 @@ grid.querySelectorAll('.cm').forEach(m => {
   stage.addEventListener('pointerdown', e => pt(e.clientX, e.clientY), { passive: true });
   stage.addEventListener('pointerleave', () => { mx = my = 1e5; tnx = tny = 0; });
   addEventListener('pointerup', e => { if (e.pointerType === 'touch') { mx = my = 1e5; tnx = tny = 0; } }, { passive: true });
-  const QUIPS = [["Listening. Actually listening.", "'Make it pop' is not a brief. He will ask."], ['Take 12. Marty, stop laughing.', 'Messy folder? Fine. He has seen worse.'],
+  const QUIPS = [["Listening. Actually listening.", "'Make it pop' is not a brief. He will ask."], ['Take 12. Nathan, stop laughing.', 'Messy folder? Fine. He has seen worse.'],
     ['That pause? Gold. Keeping it.', 'Silence is a sound effect too.'], ['Cut. Cut. Kill the darling.', 'Rough cut v3. v1 is in witness protection.'],
     ['Page load: faster. Standards: higher.', 'No template soup. Only hand-made soup.'], ['Found a hole. Closed it. Nobody noticed.', 'Dependencies updated. You are welcome.'], ['Live. Everything. Together.', 'Told you it would ship.']];
   const FILL = [3, 11, 7, 16, 0, 9, 18, 5, 13, 1, 15, 8, 19, 4, 12, 2, 17, 6, 10, 14];
@@ -1910,16 +1910,17 @@ window.__case = k => openCase(k);
 }
 
 /* =========================================================
-   RESULTS · three numbers that roll like an odometer as you scroll (pinned, fully scrubbed both ways)
+   RESULTS · four client numbers that roll like an odometer as you scroll (pinned, fully scrubbed both ways)
    ========================================================= */
 {
   const RESULTS = [ // v = the number, suf = what follows it
-    { v: 4, suf: '', label: 'Crafts, one person', sub: 'Video editing, motion graphics, web development and cyber security.', say: 'Four skills. One guy. Same coffee.' },
-    { v: 2, suf: '', label: 'Startup agencies co-founded', sub: 'Built and run alongside my co-founders.', say: 'Two agencies. Zero days off. Allegedly.' },
-    { v: 1, suf: '', label: 'Person to talk to', sub: 'No account managers, no hand-offs. Just me.', say: 'One person. No middlemen.' },
+    { v: 250, suf: 'K+', label: 'New audience in 3 months', sub: 'Zerodha. Creative Director: YouTube, Instagram and LinkedIn, end to end.', say: 'Quarter of a million. In one quarter.' },
+    { v: 100, suf: 'M+', label: 'Views in 8 months', sub: 'Nas Daily. Chief Video Editor: long footage cut into 60-second stories.', say: 'A hundred million views. No pressure.' },
+    { v: 60, suf: 'M+', label: 'Organic views in 18 months', sub: 'EnviroManly. Founder-led content on every platform, from zero.', say: 'From zero to sixty million. Organic.' },
+    { v: 3, suf: 'x', label: 'Revenue in one month', sub: 'Enigma Collectives. Creative Director: X, ads and course content.', say: 'Triple the revenue. One month.' },
   ];
   const RESULTS_SAMPLE = false;
-  const START = .06, STEP = .29, LEN = .25; // scroll fraction where each number starts counting, and how long it takes
+  const START = .06, STEP = .22, LEN = .2; // scroll fraction where each number starts counting, and how long it takes
   const sec = document.getElementById('results'), pin = document.getElementById('resPin'), row = document.getElementById('resRow'), note = document.getElementById('resNote');
   const strip = `<i>${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(n => `<b>${n}</b>`).join('')}</i>`;
   row.innerHTML = RESULTS.map((r, k) => `<div class="rs-n" data-k="${k}"><small>0${k + 1} / 0${RESULTS.length}</small>
@@ -2031,7 +2032,7 @@ window.__case = k => openCase(k);
    ========================================================= */
 {
   document.querySelectorAll('[data-mail]').forEach(a => {
-    if (MAIL) a.href = `mailto:${MAIL}?subject=${encodeURIComponent(a.dataset.mail)}`;
+    if (MAIL) { a.href = gmail(a.dataset.mail); a.target = '_blank'; a.rel = 'noopener'; }
     else a.addEventListener('click', e => { e.preventDefault(); window.__marty?.say('He has not added his email yet. Check back soon.', 4200); });
   });
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -2317,7 +2318,7 @@ window.__case = k => openCase(k);
   function say(text, ms = 4800, prio = 1) { if (!text) return; const t = NOW(); if (TH.mode === 'line' && TH.prio > prio && t < TH.until) return;
     TH.mode = 'line'; TH.prio = prio; TH.until = t + ms; if (TH.text !== text) { TH.text = text; mb.textContent = text; TH.w = 0; } }
   const GENZ = ["We're so back.", "Okay I'm back. Did I miss any lore?", "Sorry, side quest. Anyway.", "Main character re-entering the chat.", "Back like I never left. Iconic, honestly."];
-  const GLOBAL = ["Scroll slower. Some of this is funny.", "I'm not a mascot. I'm middle management.", "Video, motion, web, security. Pick a hat.", "Every pixel on this page? Hand-placed. Mostly."];
+  const GLOBAL = ["Scroll slower. Some of this is funny.", "I'm not a mascot. I'm middle management.", "Hundred million views. I counted twice.","Every pixel on this page? Hand-placed. Mostly."];
   function ambient() {
     const s = A.at >= 0 ? ST[A.at] : null, id = s ? s.id : 'edge';
     if (TH.next) { const t = TH.next; TH.next = null; say(t, 5600, 0); return; }
@@ -2346,13 +2347,13 @@ window.__case = k => openCase(k);
     'Asks how it could break. Annoying. Useful.', 'One story across every format.', 'New tool? Give him a weekend.', 'Brief to launch. No hand-offs.', "That's me on the Joker. Royalty, honestly."];
   const STEP_LINES = ['He listens first. Rare.', 'Footage, assets, everything in one folder.', 'Sound is half the video. Trust me.', 'Rough cut first. Polish after.',
     'Fast, responsive, no template soup.', 'Poked before launch. Gently. Mostly.', 'Everything goes live. Act surprised.'];
-  const EDGE_LINES = ['I live down here now.', 'Hover something. I narrate.', 'Take your time. I have cigarettes.'];
+  const EDGE_LINES = ['I live down here now.', 'Hover something. I narrate.', 'Take your time. I have coffee.'];
   const CLICK = ['Wsg my boy 🤝', 'Ayo, personal space?? jk', "Yo, you good? I'm just vibing fr", "Careful, I'm load-bearing."];
 
   const ST = [];
   const add = o => ST.push(Object.assign({ yaw: 0, lines: [], line: '' }, o));
   const firstTile = Q('.bento:not(.hu-careers) .tile');
-  add({ id: 'bento', geo: () => edgeOf(firstTile, isPhone() ? .78 : .84), act: 'tile', el: firstTile, line: '', lines: ['Four crafts. One person. Hover one.', 'Specialists hand off. He just… does it.'] });
+  add({ id: 'bento', geo: () => edgeOf(firstTile, isPhone() ? .78 : .84), act: 'tile', el: firstTile, line: '', lines: ['Pick a door. Hover one.', 'Specialists hand off. He just… does it.'] });
   add({ id: 'lab', act: 'lab', lines: ['Every card is a trick up his sleeve.', 'Nine of them. Show-off.'],
     geo: () => { if (!LB) return null;
       if (LB.flat() || !LB.L) { const ui = Q('.deck-ui'); if (!shown(ui)) return null; const r = rect(ui); return { x: r.left + (isPhone() ? 20 : 34), y: r.top - 4, px: BASE() * .95 }; }
@@ -2369,7 +2370,7 @@ window.__case = k => openCase(k);
   let numX = null;
   add({ id: 'nums', act: 'num', line: '',
     geo: () => { const rs = window.__rs; if (!rs || isPhone()) return null; const sec = rect(Q('#results')); if (sec.top > 0) return null;
-      const q = clamp(-sec.top / (sec.height - VH)); let k = 0; for (let i = 0; i < 3; i++) if (q > rs.start + i * rs.step) k = i;
+      const q = clamp(-sec.top / (sec.height - VH)); let k = 0; for (let i = 0; i < rs.R.length; i++) if (q > rs.start + i * rs.step) k = i;
       const c = rs.cells[k]; if (!shown(c)) return null; const r = rect(c), tx = r.right - 52; numX = numX == null ? tx : numX + (tx - numX) * .07;
       return { x: numX, y: r.top, px: BASE() * .92, k }; },
     key: () => .12 * VH - rect(Q('#results')).top });
@@ -2569,7 +2570,7 @@ window.__case = k => openCase(k);
     const ri = ST.findIndex(s => s.id === 'ring'), rg = G[ri];
     const clipOn = rg && ((A.at === ri && !A.hop) || (A.hop && A.hop.to === ri && A.hop.t > .5) || (A.hop && A.hop.from === ri && A.hop.t < .5));
     const cp = clipOn ? clipFor(rg, box) : ''; if (mcv._cp !== cp) { mcv._cp = cp; mcv.style.clipPath = cp; }
-    smokeFrame(dt, k, exhale > 0);
+    smokeFrame(dt, k, false); // steam off the mug only, no breath cloud from his mouth
     if (mcv.style.visibility) mcv.style.visibility = '';
     mr.render(ms, cam);
     if (!withBubble) { mb.classList.remove('show'); return; }

@@ -62,7 +62,7 @@ export async function initForest(ctx) {
   renderer.setClearColor(0x000000, 0); renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.6)); renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const cv = renderer.domElement; cv.className = 'forest-canvas'; cv.setAttribute('role', 'img');
-  cv.setAttribute('aria-label', 'An interactive 3D voxel jungle. Use W A S D to walk Marty, hold the right mouse button to turn the camera, find the sword, then fight the dragon with the left mouse button.'); host.appendChild(cv);
+  cv.setAttribute('aria-label', 'An interactive 3D voxel jungle. Use W A S D to walk Nathan Drake, hold the right mouse button to turn the camera, find the sword, then fight the dragon with the left mouse button.'); host.appendChild(cv);
   const scene = new THREE.Scene();
   const cam = new THREE.PerspectiveCamera(45, 1.6, .5, 260);
   const look = { yaw: Math.PI / 4, pitch: .68, dist: 26 };   // third-person orbit around Marty; right mouse drag turns it
