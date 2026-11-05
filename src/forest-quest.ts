@@ -17,14 +17,21 @@ export function buildQuest(env) {
   const st = { sword: false, hearts: 3, hp: 6, stage: 0, opened: false };
   const HP = 6, now = () => performance.now();
 
-  /* ---- a little quest card (top left) ---- */
+  /* ---- the quest hint: a pixel-art bulb (top left); hover it (or tap it) to read the quest card. Hearts and the dragon's health show beside it only during the fight ---- */
+  const BULB = ['...ooooo...', '..oyyyyyo..', '.oywwyyyyo.', '.oywyyyyyo.', '.oyyyyyyyo.', '.oyyyyyyyo.', '..oyyyyyo..', '...oyyyo...', '...oyyyo...', '...oggdo...', '...odddo...', '....ooo....'];
+  const PX = { o: '#2a1c06', y: '#ffd23f', w: '#fff6c7', g: '#b8bcc4', d: '#7d828c' };
+  const bulbSvg = `<svg viewBox="0 0 11 12" width="22" height="24" shape-rendering="crispEdges" aria-hidden="true">${BULB.map((r, y) => [...r].map((c, x) => PX[c] ? `<rect x="${x}" y="${y}" width="1" height="1" fill="${PX[c]}"/>` : '').join('')).join('')}</svg>`;
   const hud = document.createElement('div'); hud.className = 'fquest';
-  hud.innerHTML = '<div class="fq-k">Quest</div><div class="fq-t"></div><div class="fq-h" aria-label="Hearts"><i>♥</i><i>♥</i><i>♥</i></div><div class="fq-d" hidden><span>Dragon</span><b><i></i></b></div><button class="fq-r" type="button" hidden>Play again</button>';
+  hud.innerHTML = `<button class="fq-bulb" type="button" aria-label="Quest hint">${bulbSvg}</button><div class="fq-panel" role="status"><div class="fq-k">Quest</div><div class="fq-t"></div><button class="fq-r" type="button" hidden>Play again</button></div><div class="fq-mini" hidden><div class="fq-h" aria-label="Hearts"><i>♥</i><i>♥</i><i>♥</i></div><div class="fq-d" hidden><span>Dragon</span><b><i></i></b></div></div>`;
   host.appendChild(hud);
-  const qT = hud.querySelector('.fq-t'), qH = [...hud.querySelectorAll('.fq-h i')], qD = hud.querySelector('.fq-d'), qDI = qD.querySelector('b i'), qR = hud.querySelector('.fq-r');
+  const qT = hud.querySelector('.fq-t'), qH = [...hud.querySelectorAll('.fq-h i')], qD = hud.querySelector('.fq-d'), qDI = qD.querySelector('b i'), qR = hud.querySelector('.fq-r'), qM = hud.querySelector('.fq-mini');
+  // touch has no hover: a tap on the bulb toggles the card, a tap anywhere else closes it
+  hud.querySelector('.fq-bulb').addEventListener('click', () => hud.classList.toggle('open'));
+  addEventListener('pointerdown', e => { if (!hud.contains(e.target)) hud.classList.remove('open'); });
+  let pingT = 0; const ping = () => { hud.classList.add('ping'); clearTimeout(pingT); pingT = setTimeout(() => hud.classList.remove('ping'), 1600); };
   const TXT = ['Explore the jungle. Somewhere in it, a sword.', 'Sword in hand. Something big sleeps in the jungle to the east.', 'Fight! Click to swing, F to roll, jump over the fire.', 'Dragon down. Open the treasure chest.', 'Crown claimed. Nathan Drake is available for hire.'];
-  const paint = () => { qT.textContent = TXT[st.stage]; qH.forEach((h, i) => h.classList.toggle('off', i >= st.hearts)); qD.hidden = !(st.stage === 2); qDI.style.width = (st.hp / HP * 100) + '%'; qR.hidden = st.stage < 3; hud.dataset.stage = st.stage; };
-  const setStage = n => { st.stage = n; paint(); };
+  const paint = () => { qT.textContent = TXT[st.stage]; qH.forEach((h, i) => h.classList.toggle('off', i >= st.hearts)); qD.hidden = !(st.stage === 2); qDI.style.width = (st.hp / HP * 100) + '%'; qR.hidden = st.stage < 3; qM.hidden = !(st.stage === 2 || st.hearts < 3); hud.dataset.stage = st.stage; };
+  const setStage = n => { if (n !== st.stage) ping(); st.stage = n; paint(); };
 
   /* ---- weapons: one model for the shrine and for Marty's hand (blade points up, grip at the origin) ---- */
   const makeSword = s => { const g = new THREE.Group(); const m = (c, o) => M(c, { metalness: .55, roughness: .35, ...o });

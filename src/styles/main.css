@@ -1390,18 +1390,30 @@ body.has-forest .hero > .copy a, body.has-forest .hero > .copy button { pointer-
 .forest.is-look .forest-canvas { cursor: grabbing; }
 
 /* hero adventure: quest card and its markers */
-.fquest { position: absolute; left: var(--pad); top: 92px; z-index: 6; width: min(300px, calc(100% - var(--pad) * 2)); padding: 12px 14px; border-radius: 14px; background: rgba(14,16,20,.72); color: #f3efe6; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 8px 28px rgba(0,0,0,.28); pointer-events: none; font: 500 13px/1.35 var(--sf); }
+.fquest { position: absolute; left: var(--pad); top: 92px; z-index: 6; color: #f3efe6; font: 500 13px/1.35 var(--sf); pointer-events: none; }
+.fquest .fq-bulb { pointer-events: auto; cursor: pointer; display: grid; place-items: center; width: 42px; height: 42px; padding: 0; border: 0; border-radius: 12px; background: rgba(14,16,20,.62); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 6px 20px rgba(0,0,0,.25); transition: transform .3s cubic-bezier(.34,1.56,.64,1), background .2s; }
+.fquest .fq-bulb svg { display: block; filter: drop-shadow(0 0 0 rgba(255,210,63,0)); transition: filter .25s; }
+.fquest:hover .fq-bulb, .fquest.open .fq-bulb { background: rgba(14,16,20,.82); transform: translateY(-1px); }
+.fquest:hover .fq-bulb svg, .fquest.open .fq-bulb svg, .fquest.ping .fq-bulb svg { filter: drop-shadow(0 0 6px rgba(255,210,63,.85)); }
+.fquest.ping .fq-bulb { animation: fqping 1.6s ease-out; }
+@keyframes fqping { 0%, 100% { transform: none; } 20% { transform: translateY(-4px); } 40% { transform: none; } 60% { transform: translateY(-2px); } 80% { transform: none; } }
+.fquest .fq-bulb:focus-visible { outline: 2px solid #ffd23f; outline-offset: 2px; }
+.fquest .fq-panel { position: absolute; left: 0; top: 100%; width: min(300px, calc(100vw - var(--pad) * 2)); margin-top: 8px; padding: 12px 14px; border-radius: 14px; background: rgba(14,16,20,.82); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 8px 28px rgba(0,0,0,.28); opacity: 0; visibility: hidden; transform: translateY(-6px); transition: opacity .2s, transform .25s, visibility 0s .25s; }
+.fquest .fq-panel::before { content: ""; position: absolute; left: 0; right: 0; top: -10px; height: 10px; }
+.fquest:hover .fq-panel, .fquest.open .fq-panel, .fquest .fq-bulb:focus-visible ~ .fq-panel { opacity: 1; visibility: visible; transform: none; pointer-events: auto; transition: opacity .2s, transform .25s, visibility 0s; }
 .fquest .fq-k { font: 700 10px/1 var(--sf); letter-spacing: .14em; text-transform: uppercase; color: #ff6a3d; margin-bottom: 6px; }
-.fquest .fq-h { display: flex; gap: 3px; margin-top: 8px; color: #ff4d6d; font-size: 16px; line-height: 1; }
+.fquest .fq-mini { position: absolute; left: 50px; top: 0; min-width: 120px; padding: 9px 11px; border-radius: 12px; background: rgba(14,16,20,.62); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.fquest .fq-mini[hidden] { display: none; }
+.fquest .fq-h { display: flex; gap: 3px; color: #ff4d6d; font-size: 16px; line-height: 1; }
 .fquest .fq-h i { font-style: normal; transition: opacity .2s, filter .2s; }
 .fquest .fq-h i.off { opacity: .22; filter: grayscale(1); }
-.fquest .fq-d { margin-top: 10px; display: flex; align-items: center; gap: 8px; font: 700 10px/1 var(--sf); letter-spacing: .12em; text-transform: uppercase; color: #9be86f; }
+.fquest .fq-d { margin-top: 8px; display: flex; align-items: center; gap: 8px; font: 700 10px/1 var(--sf); letter-spacing: .12em; text-transform: uppercase; color: #9be86f; }
 .fquest .fq-d[hidden], .fquest .fq-r[hidden] { display: none; }
 .fquest .fq-d b { flex: 1; height: 7px; border-radius: 4px; background: rgba(255,255,255,.14); overflow: hidden; }
 .fquest .fq-d b i { display: block; height: 100%; background: linear-gradient(90deg, #ff5a1f, #ffd23f); transition: width .25s; }
-.fquest .fq-r { margin-top: 10px; pointer-events: auto; cursor: pointer; border: 0; border-radius: 999px; padding: 6px 12px; font: 600 12px/1 var(--sf); background: #ff4500; color: #fff; }
+.fquest .fq-r { margin-top: 10px; cursor: pointer; border: 0; border-radius: 999px; padding: 6px 12px; font: 600 12px/1 var(--sf); background: #ff4500; color: #fff; }
 .fq-pin b { background: #ffd23f; color: #1a1408; }
-@media (max-width: 900px) { .fquest { top: 74px; padding: 9px 11px; font-size: 12px; } }
+@media (max-width: 900px) { .fquest { top: 74px; font-size: 12px; } .fquest .fq-bulb { width: 38px; height: 38px; } .fquest .fq-mini { left: 46px; } }
 .hu-pol img[data-ph="me"] { object-position: 50% 30%; }
 
 /* the hero is only the playground now, so on phones it fills the whole first screen too */
